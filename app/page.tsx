@@ -54,6 +54,10 @@ interface AutoButton {
 }
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [activeButtonId, setActiveButtonId] = useState<number | null>(null);
   const [autoButtons, setAutoButtons] = useState<AutoButton[]>([]);
   const [btnLabel, setBtnLabel] = useState<string>("");
@@ -284,19 +288,24 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
+  // 修正版 tileContent
   const tileContent = React.useMemo(() => {
-    return ({ date, view }: { date: Date; view: string }) => {
-      if (view === 'month') {
-        const dateStr = date.toISOString().split('T')[0];
-        const total = dailyTotals[dateStr];
-        return total ? (
-          <div style={{ fontSize: '10px', color: '#25b330', fontWeight: 'bold' }}>
-            ￥{total.toLocaleString()}
-          </div>
-        ) : null;
-      }
-    };
-  }, [dailyTotals]); // dailyTotals が変わるたびに再生成される
+  return ({ date, view }: { date: Date; view: string }) => {
+    if (view === 'month') {
+      // toLocaleDateString('en-CA') は "YYYY-MM-DD" を返すので
+      // タイムゾーンによるズレが起きません
+      const dateStr = date.toLocaleDateString('en-CA');
+      
+      const total = dailyTotals[dateStr];
+      
+      return total ? (
+        <div style={{ fontSize: '10px', color: '#25b330', fontWeight: 'bold' }}>
+          ￥{total.toLocaleString()}
+        </div>
+      ) : null;
+    }
+  };
+}, [dailyTotals]);
 
   const categoryTotals = filteredRecords.reduce((acc, r) => {
     acc[r.category] = (acc[r.category] || 0) + r.amount;
@@ -565,8 +574,8 @@ return (
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">📅 日付</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-xl text-sm bg-white font-bold text-center" />
+                <label className="block text-xs font-bold text-gray-500 mb-1">📅 日付</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border rounded-xl text-sm bg-white" />
               </div>
 
               <div>
@@ -734,12 +743,14 @@ return (
       {/* 📅 カレンダー表示をここに配置 */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mb-6">
         <h2 className="text-sm font-bold text-gray-800 mb-3">📅 登録履歴</h2>
-        <Calendar 
-          key={records.length} // records の件数が変わるたびにカレンダーを作り直す
-          locale="ja-JP" 
-          tileContent={tileContent} 
-          className="border-none rounded-xl"
-        />
+        {isMounted && ( // isMounted が true になるまで表示しない
+          <Calendar 
+            key={records.length}
+            locale="ja-JP" 
+            tileContent={tileContent} 
+            className="border-none rounded-xl"
+          />
+        )}
       </div>
 
 

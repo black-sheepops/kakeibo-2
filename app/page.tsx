@@ -2,6 +2,7 @@
 
 
 import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css'; // カレンダーのCSSをインポート
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
@@ -254,11 +255,13 @@ export default function Home() {
     try {
       await supabase.from("kakeibo").delete().eq("id", id);
       alert("🗑️ データを削除しました");
-      await fetchData();
-    } catch (error) {
-      alert("削除に失敗しました");
-    }
-  };
+      await fetchData(); // これを呼ぶと、fetchData内で setRecords が走り、
+                      // その結果 dailyTotals が再計算され、
+                      // key={records.length} によってカレンダーが更新されます。
+  } catch (error) {
+    alert("削除に失敗しました");
+  }
+};
 
   const startEdit = (rec: KakeiboRecord) => {
     setEditingId(rec.id); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo);
@@ -281,17 +284,19 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
-  const tileContent = ({ date, view }: { date: Date; view: string }) => {
-    if (view === 'month') {
-      const dateStr = date.toISOString().split('T')[0];
-      const total = dailyTotals[dateStr];
-      return total ? (
-        <div style={{ fontSize: '10px', color: '#059669', fontWeight: 'bold' }}>
-          ￥{total.toLocaleString()}
-        </div>
-      ) : null;
-    }
-  };
+  const tileContent = React.useMemo(() => {
+    return ({ date, view }: { date: Date; view: string }) => {
+      if (view === 'month') {
+        const dateStr = date.toISOString().split('T')[0];
+        const total = dailyTotals[dateStr];
+        return total ? (
+          <div style={{ fontSize: '10px', color: '#25b330', fontWeight: 'bold' }}>
+            ￥{total.toLocaleString()}
+          </div>
+        ) : null;
+      }
+    };
+  }, [dailyTotals]); // dailyTotals が変わるたびに再生成される
 
   const categoryTotals = filteredRecords.reduce((acc, r) => {
     acc[r.category] = (acc[r.category] || 0) + r.amount;
@@ -344,7 +349,6 @@ export default function Home() {
  const handleAutoSelect = (btn: AutoButton) => { 
     
 // 追加：クリック時にコンソールに値を出力する
-    console.log("ボタンが押されました:", btn.category); 
     
     setAmount(String(btn.amount));
     setSelectedCategory(btn.category);
@@ -398,19 +402,22 @@ return (
     <main className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-sans text-gray-800 pb-12">
       
       {/* 🌟 1. 画面上部のタイトル */}
-      <h1 className="text-2xl font-extrabold text-gray-700 mt-2 mb-2 tracking-wide flex items-center gap-2">
-        🍀コツコツ家計簿🍀
-      </h1>
+      <header className="w-full max-w-md py-4 text-center">
+        <h1 className="text-2xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
+      </header>
 
       
 
       {/* 🍀 メインカード */}
-      <div className={`w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mt-2 border-2 ${editingId !== null ? "border-amber-400 ring-4 ring-amber-100" : "border-transparent"}`}>
-        
-        {/* 設定モード切り替えボタン */}
-        <div className="flex justify-end mb-4">
-          <button onClick={() => setIsSettingMode(!isSettingMode)} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${isSettingMode ? "bg-gray-600 text-white shadow-inner" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100 shadow-sm"}`}>
-            {isSettingMode ? "⬅ 入力画面に戻る" : "⚙ 設定 (ボタン・定期)"}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+
+        {/* 設定トグル */}
+         <div className="flex justify-end w-full mb-6 bg-red-100">
+          <button 
+            onClick={() => setIsSettingMode(!isSettingMode)} 
+            className="text-[10px] font-bold px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+          >
+            {isSettingMode ? "⬅ 入力画面へ" : "⚙ 設定・定期管理"}
           </button>
         </div>
 
@@ -539,11 +546,13 @@ return (
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
+
                   // 押した時に少し沈む演出
                   onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
                   onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
+
                   <div style={{ fontWeight: '800', fontSize: '11px', color: '#1f2937', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {btn.label}
                   </div>
@@ -552,6 +561,7 @@ return (
                   </div>
                 </button>
               ))}
+            
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
@@ -565,11 +575,11 @@ return (
               </div>
 
               {/* 📂 カテゴリ */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">📂 カテゴリ</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {quickCategories.map((cat) => (
-                    <button 
+              <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">カテゴリ</p>
+              <div className="grid grid-cols-4 gap-2">
+                {quickCategories.map((cat) => (
+                  <button 
                       type="button" 
                       key={cat} 
                       onClick={() => setSelectedCategory(cat)}
@@ -588,17 +598,17 @@ return (
                       }}
                     >
                       {cat}
-                    </button>  
-                  ))}
-                </div>
+                    </button>
+                ))}
               </div>
+            </div>
 
               {/* 💳 支払い方法 */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">💳 支払い方法</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {paymentMethods.map((method) => (
-                    <button 
+              <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">支払い</p>
+              <div className="grid grid-cols-2 gap-2">
+                {paymentMethods.map((method) => (
+                  <button 
                       type="button" 
                       key={method} 
                       // 修正：ここを setSelectedPayment に変更
@@ -618,10 +628,11 @@ return (
                       }}
                     >
                       {method}
-                    </button> 
-                  ))}
-                </div>
+                    </button>
+                ))}
               </div>
+            </div>
+
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">メモ</label>
@@ -648,6 +659,7 @@ return (
                   onMouseUp={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                 >
+
                   ✨ 登録する
                 </button>
               </div>
@@ -657,7 +669,7 @@ return (
       </div>
 
       {/* 📊 集計・レポートカード */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mt-6 space-y-6">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mt-6 space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
           <h2 className="text-base font-bold text-gray-800">📊 支出レポート</h2>
           <div className="flex items-center gap-1">
@@ -720,9 +732,10 @@ return (
 
 
       {/* 📅 カレンダー表示をここに配置 */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mb-6">
         <h2 className="text-sm font-bold text-gray-800 mb-3">📅 登録履歴</h2>
         <Calendar 
+          key={records.length} // records の件数が変わるたびにカレンダーを作り直す
           locale="ja-JP" 
           tileContent={tileContent} 
           className="border-none rounded-xl"
@@ -731,7 +744,7 @@ return (
 
 
       {/* 🕒 最近の履歴リスト */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mt-6">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mt-6">
         
         <p className="text-xs font-bold text-gray-400 mb-2"> リスト({targetMonth}月)</p>
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">

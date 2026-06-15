@@ -1,0 +1,18 @@
+{
+  "theme_color": "#10b981",
+  "background_color": "#f9fafb",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "name": "スマート家計簿 Presets",
+  "short_name": "家計簿",
+  "description": "サクサク入力できるカード型UIの家計簿アプリ",
+  "icons": [
+    {
+      "src": "myicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

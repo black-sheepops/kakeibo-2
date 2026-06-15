@@ -4,17 +4,12 @@
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css'; // カレンダーのCSSをインポート
 import React, { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabaseClient"; // 1行でこれだけ！
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const getTodayString = () => {
   const d = new Date();
@@ -54,10 +49,10 @@ interface AutoButton {
 }
 
 export default function Home() {
+  // --- ① すべての useState（状態管理）をコンポーネントのトップレベルに綺麗に並べる ---
   const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [viewDate, setViewDate] = useState(new Date());
+  const [currentViewDate, setCurrentViewDate] = useState(new Date());
   const [activeButtonId, setActiveButtonId] = useState<number | null>(null);
   const [autoButtons, setAutoButtons] = useState<AutoButton[]>([]);
   const [btnLabel, setBtnLabel] = useState<string>("");
@@ -70,19 +65,12 @@ export default function Home() {
   const [memo, setMemo] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("現金"); // 初期値を指定
+  const [paymentMethod, setPaymentMethod] = useState("現金");
   const [date, setDate] = useState(getTodayString());
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [records, setRecords] = useState<KakeiboRecord[]>([]);
-  const quickPresets = [
-  { label: "練習", amount: "500", category: "バドミントン" },
-  { label: "コンビニ", amount: "300", category: "食費" },
-  ]
-    
-  // ⚙️ 自動入力スケジュール用のステート
   const [schedules, setSchedules] = useState<AutoSchedule[]>([]);
   const [isSettingMode, setIsSettingMode] = useState<boolean>(false);
-  
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
   const [targetMonth, setTargetMonth] = useState<number>(new Date().getMonth() + 1);
 
@@ -94,84 +82,101 @@ export default function Home() {
   const [schPayment, setSchPayment] = useState<string>("現金");
   const [schInterval, setSchInterval] = useState<"monthly" | "weekly">("monthly");
   const [schDay, setSchDay] = useState<string>("1");
-
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const quickPresets = [
+    { label: "練習", amount: "500", category: "バドミントン" },
+    { label: "コンビニ", amount: "300", category: "食費" },
+  ];
 
   const quickCategories = ["食費", "外食", "日用品", "バドミントン", "自動車", "交通費", "固定費", "その他"];
   const paymentMethods = ["現金", "クレジットカード", "QR決済", "その他"];
   const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
 
-  // 🔄 起動時にスケジュールをチェックして自動入力するコアロジック
-  const checkAndTriggerAutoInput = async (currentSchedules: AutoSchedule[]) => {
+  // --- ② 起動時にスケジュールをチェックして自動入力するコアロジック ---
+  const checkAndTriggerAutoInput = async (currentSchedules: any[]) => {
     const today = new Date();
     const todayStr = getTodayString();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
+    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     const currentDay = today.getDate();
-    const currentDayOfWeek = today.getDay(); // 0:日〜6:土
+    const currentDayOfWeek = today.getDay();
 
     const newInserts = [];
     const updatedScheduleIds: number[] = [];
 
     for (const sch of currentSchedules) {
+      let targetDateStr;
       let shouldExecute = false;
-      let targetRecordDate = todayStr;
 
       if (sch.interval_type === "monthly") {
-        // 設定された日が今日、または過ぎているかチェック
-        if (currentDay >= sch.target_day) {
-          const expectedExecutionPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
-          // 今月まだ未実行なら実行
-          const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
-       if (sch.last_executed_at === currentMonthStr) continue; // 実行済みなら次へ
+        if (currentDay >= sch.target_day && sch.last_executed_at !== currentMonthStr) {
+          shouldExecute = true;
+          targetDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(sch.target_day).padStart(2, "0")}`;
         }
       } else if (sch.interval_type === "weekly") {
-        // 設定された曜日が今日と同じかチェック
-        if (currentDayOfWeek === sch.target_day) {
-          // 今日まだ未実行なら実行
-          if (sch.last_executed_at !== todayStr) {
-            shouldExecute = true;
-            targetRecordDate = todayStr;
-          }
+        if (currentDayOfWeek === sch.target_day && sch.last_executed_at !== todayStr) {
+          shouldExecute = true;
+          targetDateStr = todayStr;
         }
       }
 
       if (shouldExecute) {
-        newInserts.push({
-          amount: sch.amount,
-          category: sch.category,
-          memo: `[自動定期] ${sch.memo || sch.label}`,
-          payment_method: sch.payment_method,
-          date: targetRecordDate
-        });
-        updatedScheduleIds.push(sch.id);
+        const { data: existing } = await supabase
+          .from("kakeibo")
+          .select("id")
+          .eq("memo", `[自動] ${sch.memo || sch.label}`)
+          .eq("date", targetDateStr)
+          .single();
+
+        if (!existing) {
+          newInserts.push({ 
+            amount: sch.amount, 
+            category: sch.category, 
+            memo: `[自動] ${sch.memo || sch.label}`, 
+            payment_method: sch.payment_method, 
+            date: targetDateStr 
+          });
+          updatedScheduleIds.push(sch.id);
+        }
       }
     }
 
     if (newInserts.length > 0) {
-      try {
-        await supabase.from("kakeibo").insert(newInserts);
-        
-        // Promise.all を使って効率化
-        await Promise.all(
-          updatedScheduleIds.map(id => 
-            supabase.from("auto_schedules").update({ last_executed_at: getTodayString() }).eq("id", id)
-          )
-        );
-        alert(`🤖 定期自動入力（${newInserts.length}件）を実行しました！`);
-        await fetchData(); // 実行後にデータを再取得して表示を更新
-      } catch (error) {
-        console.error("自動入力エラー:", error);
-      }
+      await supabase.from("kakeibo").insert(newInserts);
+      
+      await Promise.all(updatedScheduleIds.map(id => {
+        const sch = currentSchedules.find(s => s.id === id);
+        return supabase.from("auto_schedules").update({ 
+          last_executed_at: sch.interval_type === "monthly" ? currentMonthStr : todayStr 
+        }).eq("id", id);
+      }));
+      
+      fetchData(); // ここで下のfetchDataを呼び出す
+      alert("🤖 定期自動入力を実行しました！");
     }
   };
 
-  const fetchData = async () => {
+  // --- ③ データを取得する本体の関数（1つに綺麗にまとめました！） ---
+  const fetchData = React.useCallback(async (dateArg?: Date) => {
+    // 1. 表示したい年と月を正しく取得する
+    const year = dateArg ? dateArg.getFullYear() : targetYear;
+    const month = dateArg ? dateArg.getMonth() + 1 : targetMonth;
+
+    // 2. その月の「始まりの日(1日)」と「正しい終わりの日(最終日)」を計算する
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+    
+    // JSの裏技: 翌月の0日目を指定すると、その月の本当の最終日（30日や28日、31日）が自動で手に入ります！
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
     const { data: recData } = await supabase
       .from("kakeibo")
       .select("*")
+      .gte("date", startDate)
+      .lte("date", endDate)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
+    
     if (recData) setRecords(recData);
 
     const { data: schData } = await supabase
@@ -181,19 +186,26 @@ export default function Home() {
     
     if (schData) {
       setSchedules(schData);
-      // データ取得完了後に自動入力チェックを走らせる
       await checkAndTriggerAutoInput(schData);
     }
+
     const { data: btnData } = await supabase
       .from("auto_buttons")
       .select("*")
       .order("sort_order", { ascending: true });
+    
     if (btnData) setAutoButtons(btnData);
-  };
+  }, [targetYear, targetMonth]);
+
+  // --- ④ データの変化を監視して自動実行する部分 ---
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);   
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const dateObj = new Date(targetYear, targetMonth - 1);
+    fetchData(dateObj);
+  }, [targetYear, targetMonth, fetchData]); // ★監視対象に「targetYear」と「targetMonth」を追加！
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -355,22 +367,15 @@ export default function Home() {
     ],
   };
   // ボタン選択時の動作
- const handleAutoSelect = (btn: AutoButton) => { 
-    
-// 追加：クリック時にコンソールに値を出力する
-    
-    setAmount(String(btn.amount));
+ const handleAutoSelect = (btn: any) => { 
+    setAmount(btn.amount.toString());
     setSelectedCategory(btn.category);
     setMemo(btn.memo);
-    setPaymentMethod(btn.payment_method || "現金");
+    const method = btn.payment_method || "現金";
+    setPaymentMethod(method);
+    setSelectedPayment(method); // 支払い方法ボタンのUI表示を同期させる
     setDate(getTodayString());
-
-  setAmount(btn.amount.toString());
-  setSelectedCategory(btn.category);
-  setMemo(btn.memo);
-  setPaymentMethod(btn.payment_method || "現金");
-  setDate(getTodayString());
-}
+  }
 ;
 
   // ボタンの追加・更新
@@ -408,20 +413,19 @@ export default function Home() {
   
 
 return (
-    <main className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-sans text-gray-800 pb-12">
+    <main className="min-h-screen bg-gray-100 flex flex-col items-center p-4 pb-12 gap-y-4">
       
+      <div className="max-w-2xl mx-auto space-y-6"></div>
       {/* 🌟 1. 画面上部のタイトル */}
       <header className="w-full max-w-md py-4 text-center">
         <h1 className="text-2xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
       </header>
-
       
-
       {/* 🍀 メインカード */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
 
         {/* 設定トグル */}
-         <div className="flex justify-end w-full mb-6 bg-red-100">
+      <div className="flex justify-end w-full mb-6 bg-red-100">
           <button 
             onClick={() => setIsSettingMode(!isSettingMode)} 
             className="text-[10px] font-bold px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
@@ -429,6 +433,7 @@ return (
             {isSettingMode ? "⬅ 入力画面へ" : "⚙ 設定・定期管理"}
           </button>
         </div>
+        
 
         {isSettingMode ? (
           /* =========================================
@@ -530,9 +535,11 @@ return (
             </div>
           </div>
         ) : (
+      
           /* =========================================
              ⚡ 通常の家計簿入力画面（表画面）
              ========================================= */
+      <div className="max-w-2xl mx-auto space-y-6">
             <div className="grid grid-cols-4 gap-2">
               {autoButtons.map((btn) => (
                 <button 
@@ -570,7 +577,7 @@ return (
                   </div>
                 </button>
               ))}
-            
+      </div>     
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
@@ -740,19 +747,25 @@ return (
       </div>
 
 
-      {/* 📅 カレンダー表示をここに配置 */}
+       {/* 📅 カレンダー表示をここに配置 */}
+
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mb-6">
         <h2 className="text-sm font-bold text-gray-800 mb-3">📅 登録履歴</h2>
         {isMounted && ( // isMounted が true になるまで表示しない
-          <Calendar 
-            key={records.length}
-            locale="ja-JP" 
-            tileContent={tileContent} 
-            className="border-none rounded-xl"
+          <Calendar
+            onActiveStartDateChange={({ activeStartDate }) => {
+              if (activeStartDate) {
+                // 1. レポートや履歴リスト用の年月を先月に変更する
+                setTargetYear(activeStartDate.getFullYear());
+                setTargetMonth(activeStartDate.getMonth() + 1);
+                // 2. ★超重要★ カレンダー自身が今見ている年月も「先月」に同期させる！
+                setCurrentViewDate(activeStartDate);
+              }
+            }}
+            tileContent={tileContent}
           />
         )}
       </div>
-
 
       {/* 🕒 最近の履歴リスト */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mt-6">
@@ -788,4 +801,4 @@ return (
       </div>
     </main>
   );
-}
+} // ここでHomeコンポーネントを閉じる

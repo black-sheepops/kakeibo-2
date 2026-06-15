@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* アプリ全体の背景色や文字の基本設定 */
+body {
+  background-color: #f9fafb; /* ロードマップにある、カードが映える薄いグレーです */
+  color: #1f2937;
+}

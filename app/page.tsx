@@ -162,20 +162,22 @@ export default function Home() {
     const year = dateArg ? dateArg.getFullYear() : targetYear;
     const month = dateArg ? dateArg.getMonth() + 1 : targetMonth;
 
-    // 2. その月の「始まりの日(1日)」と「正しい終わりの日(最終日)」を計算する
-    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+   // 2. グラフ表示（過去6か月）に必要な一番古い「5か月前の1日」を計算する
+    const sixMonthsAgoDate = new Date(year, month - 1 - 5, 1);
+    const startDate = `${sixMonthsAgoDate.getFullYear()}-${String(sixMonthsAgoDate.getMonth() + 1).padStart(2, "0")}-01`;
     
-    // JSの裏技: 翌月の0日目を指定すると、その月の本当の最終日（30日や28日、31日）が自動で手に入ります！
+    // 今月の最終日を計算する
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
+    // 💡今月だけでなく、過去6か月分のデータをまとめてSupabaseから取得します！
     const { data: recData } = await supabase
       .from("kakeibo")
       .select("*")
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false });   
     
     if (recData) setRecords(recData);
 
@@ -330,17 +332,21 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
+
+
+// 💡選択されている年・月(targetYear, targetMonth)を基準にして過去6か月分の配列を作ります
   const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date();
+    const d = new Date(targetYear, targetMonth - 1);
     d.setMonth(d.getMonth() - i);
     return { year: d.getFullYear(), month: d.getMonth() + 1 };
   }).reverse();
 
+  // 💡Supabaseから多めに取得しておいた records 全体から、各月の合計を正しく計算します
   const last6MonthsTotals = last6Months.map(m => {
     const targetPrefix = `${m.year}-${String(m.month).padStart(2, "0")}`;
     return records
       .filter(r => r.date && r.date.startsWith(targetPrefix))
-      .reduce((sum, r) => sum + r.amount, 0);
+      .reduce((sum, r) => sum + Number(r.amount), 0);
   });
 
   const doughnutData = {
@@ -425,7 +431,7 @@ return (
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
 
         {/* 設定トグル */}
-      <div className="flex justify-end w-full mb-6 bg-red-100">
+        <div className="flex justify-end w-full mb-6">
           <button 
             onClick={() => setIsSettingMode(!isSettingMode)} 
             className="text-[10px] font-bold px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
@@ -442,32 +448,81 @@ return (
              ========================================= */
           <div className="animate-fade-in">
             {/* --- ① ワンタップボタン管理 --- */}
-            <h2 className="text-base font-bold text-gray-300 mb-4 flex items-center gap-1">⚙️管理画面⚙️</h2>
-            <p className="text-[11px] text-gray-200 mb-4">クイックボタン登録</p>
-            <div className="space-y-2 mb-4">
+            <h2 className="text-base font-black text-indigo-900 mb-4 flex items-center gap-1">⚙️ 管理画面</h2>
+            <p className="text-xs font-bold text-gray-500 mb-4">クイックボタンの登録・編集</p>
+                    
+            {/* 💡 登録されたボタンを綺麗に2列で横並びにするエリアです */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
               {autoButtons.map((btn) => (
-                <div key={btn.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-xl border text-xs">
-                  <button onClick={() => { setEditingBtnId(btn.id); setBtnLabel(btn.label); setBtnAmount(btn.amount.toString()); 
-                    setBtnCategory(btn.category); setBtnMemo(btn.memo); setBtnPayment(btn.payment_method || "現金"); }} 
-                    className="font-bold text-indigo-600 text-left hover:underline">
-                    {btn.label} <span className="text-gray-400 font-normal">({btn.category} / ￥{btn.amount})</span>
+                <div 
+                  key={btn.id} 
+                  className="flex flex-col justify-between p-3 bg-white hover:bg-gray-50 rounded-2xl border border-gray-100 shadow-sm text-xs transition-all duration-150"
+                >
+                  {/* 💡 上側：ボタン情報（タップするとこのボタンの内容を編集できます） */}
+                  <button 
+                    onClick={() => { 
+                      setEditingBtnId(btn.id); 
+                      setBtnLabel(btn.label); 
+                      setBtnAmount(btn.amount.toString()); 
+                      setBtnCategory(btn.category); 
+                      setBtnMemo(btn.memo); 
+                      setBtnPayment(btn.payment_method || "現金"); 
+                    }} 
+                    className="text-left mb-2 group active:scale-95 transition-all"
+                  >
+                    <div className="font-bold text-indigo-600 text-sm truncate group-hover:underline">
+                      {btn.label}
+                    </div>
+                    <div className="text-gray-500 text-[10px] mt-0.5">
+                      {btn.category}
+                    </div>
+                    <div className="text-gray-700 font-semibold mt-1">
+                      ￥{btn.amount.toLocaleString()}
+                    </div>
                   </button>
-                  <button onClick={() => handleDeleteButton(btn.id)} className="text-red-500 font-bold px-2">削除</button>
+
+                  {/* 💡 下側：削除ボタン（カードの下側に線を引いて、小さくオシャレに配置しました） */}
+                  <div className="border-t border-gray-100 pt-2 flex justify-end">
+                    <button 
+                      onClick={() => handleDeleteButton(btn.id)} 
+                      className="text-red-400 hover:text-red-600 font-medium text-[11px] px-1 active:scale-95 transition-all"
+                    >
+                      🗑️ 削除
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleButtonSubmit} className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-3">
-              <input type="text" placeholder="ボタンの表示名 (例: 家賃、ジムなど)" value={btnLabel} onChange={(e) => setBtnLabel(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />
-              <input type="number" placeholder="金額 (円)" value={btnAmount} onChange={(e) => setBtnAmount(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />
-              <select value={btnCategory} onChange={(e) => setBtnCategory(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white">
+
+            {/* 💡 ボタン追加・更新フォーム（ここもカード型UIに馴染むように rounded-2xl に整えました） */}
+            <form onSubmit={handleButtonSubmit} className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/80 space-y-3">
+              <input type="text" placeholder="ボタンの表示名 (例: 家賃、ジムなど)" value={btnLabel} onChange={(e) => setBtnLabel(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-indigo-400 transition" />
+              <input type="number" placeholder="金額 (円)" value={btnAmount} onChange={(e) => setBtnAmount(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-indigo-400 transition" />
+              <select value={btnCategory} onChange={(e) => setBtnCategory(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-indigo-400 transition">
                 <option value="">-- カテゴリ --</option>
                 {quickCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={btnPayment} onChange={(e) => setBtnPayment(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white">
+              <select value={btnPayment} onChange={(e) => setBtnPayment(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-indigo-400 transition">
                 {paymentMethods.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <input type="text" placeholder="自動入力メモ" value={btnMemo} onChange={(e) => setBtnMemo(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />
-              <button type="submit" className="w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition">{editingBtnId ? "ボタンを更新" : "ボタンを追加"}</button>
+              <input type="text" placeholder="自動入力メモ" value={btnMemo} onChange={(e) => setBtnMemo(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-indigo-400 transition" />
+              
+              {/* 🛠️【修正箇所】ボタンを囲む親要素を flex にして、2つのボタンを綺麗な横並びにしました！ */}
+              <div className="flex gap-3 pt-1">
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 active:scale-[0.95] transition shadow-md text-center"
+                >
+                  {editingBtnId ? "🔄 更新する" : "➕ 追加する"}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsSettingMode(false)}
+                  className="flex-1 py-3 bg-gray-200 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-300 active:scale-[0.95] transition shadow-md text-center"
+                >
+                  戻る
+                </button>
+              </div>
             </form>
 
             <hr className="my-8 border-dashed border-gray-300" />
@@ -475,7 +530,7 @@ return (
             {/* --- ② 定期ルール管理 --- */}
             <div className="mb-2">
               
-              <p className="text-[11px] text-gray-200 mb-4">固定費の登録・編集</p>
+              <p className="text-xs font-bold text-gray-500 mb-4">固定費（定期ルール）の登録・編集</p>
               
               <div className="space-y-2 mb-4">
                 {schedules.length === 0 ? (
@@ -536,59 +591,72 @@ return (
           </div>
         ) : (
       
-          /* =========================================
-             ⚡ 通常の家計簿入力画面（表画面）
+            /* =========================================
+              ⚡ 通常の家計簿入力画面（表画面）
              ========================================= */
-      <div className="max-w-2xl mx-auto space-y-6">
-            <div className="grid grid-cols-4 gap-2">
-              {autoButtons.map((btn) => (
-                <button 
-                  type="button" 
-                  key={btn.id} 
-                  onClick={() => handleAutoSelect(btn)}
-                  style={{
-                    padding: '6px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb', // border-gray-200相当
-                    borderRadius: '12px',
-                    textAlign: 'center',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // shadow-sm相当
-                    height: '56px', // h-14相当
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
+            <div className="max-w-2xl mx-auto space-y-6">
+              <div 
+                className="flex"
+                style={{
+                  gap: '8px',
+                  paddingLeft: '4px',
+                  paddingRight: '4px',
+                  paddingBottom: '8px',
+                  overflowX: 'auto', 
+                  whiteSpace: 'nowrap', 
+                  WebkitOverflowScrolling: 'touch', 
+                }}
+              >
+                {autoButtons.map((btn) => (
+                  <button 
+                    type="button" 
+                    key={btn.id} 
+                    onClick={() => handleAutoSelect(btn)}
+                    style={{
+                      padding: '8px 12px', 
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #f3f4f6', 
+                      borderRadius: '16px', 
+                      textAlign: 'center',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', 
+                      height: '60px', 
+                      minWidth: '94px', 
+                      flexShrink: 0,    
+                      display: 'flex',
+                      flexDirection: 'column',
+                      // 🛠️【修正箇所】ハイフンを消してCを大文字（キャメルケース）に直しました！
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      transition: 'transform 0.1s ease, background-color 0.1s ease',
+                    }}
+                    onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.93)'; e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                    onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                    onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.93)'; e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                    onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                  >
+                    <div style={{ fontWeight: '700', fontSize: '11px', color: '#374151', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {btn.label}
+                    </div>
+                    <div style={{ fontSize: '10px', fontWeight: '600', color: '#4f46e5', marginTop: '2px' }}>
+                      ￥{btn.amount.toLocaleString()}
+                    </div>
+                  </button>
+                ))}
+              </div>     
 
-                  // 押した時に少し沈む演出
-                  onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">📅 日付</label>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400 transition" />
+                </div>
 
-                  <div style={{ fontWeight: '800', fontSize: '11px', color: '#1f2937', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {btn.label}
-                  </div>
-                  <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>
-                    ￥{btn.amount.toLocaleString()}
-                  </div>
-                </button>
-              ))}
-      </div>     
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">💰 金額 (円)</label>
+                  <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} className="w-full p-4 border-2 border-emerald-400 rounded-2xl text-3xl font-black text-center text-emerald-700 bg-emerald-50/20 focus:outline-none focus:bg-emerald-50/40 transition" />
+                </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">📅 日付</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border rounded-xl text-sm bg-white" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">💰 金額 (円)</label>
-                <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} className="w-full p-4 border-2 border-emerald-400 rounded-2xl text-3xl font-black text-center text-emerald-700 bg-emerald-50/20" />
-              </div>
 
               {/* 📂 カテゴリ */}
               <div className="space-y-2">

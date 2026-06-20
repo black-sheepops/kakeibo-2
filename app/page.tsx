@@ -1,13 +1,11 @@
 "use client";
 
-
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css'; // カレンダーのCSSをインポート
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient"; // 1行でこれだけ！
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
-
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -64,7 +62,6 @@ export default function Home() {
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("現金");
   const [date, setDate] = useState(getTodayString());
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -332,8 +329,6 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
-
-
 // 💡選択されている年・月(targetYear, targetMonth)を基準にして過去6か月分の配列を作ります
   const last6Months = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(targetYear, targetMonth - 1);
@@ -379,7 +374,6 @@ export default function Home() {
     setMemo(btn.memo);
     const method = btn.payment_method || "現金";
     setPaymentMethod(method);
-    setSelectedPayment(method); // 支払い方法ボタンのUI表示を同期させる
     setDate(getTodayString());
   }
 ;
@@ -415,9 +409,6 @@ export default function Home() {
     await supabase.from("auto_buttons").delete().eq("id", id);
     await fetchData();
   };
-
-  
-
 return (
     <main className="min-h-screen bg-gray-100 flex flex-col items-center p-4 pb-12 gap-y-4">
       
@@ -624,7 +615,6 @@ return (
                       flexShrink: 0,    
                       display: 'flex',
                       flexDirection: 'column',
-                      // 🛠️【修正箇所】ハイフンを消してCを大文字（キャメルケース）に直しました！
                       justifyContent: 'center', 
                       alignItems: 'center',
                       cursor: 'pointer',
@@ -671,12 +661,11 @@ return (
                         padding: '10px 18px',
                         borderRadius: '12px',
                         border: '2px solid',
-                        // 選択中はエメラルド、未選択は白
                         backgroundColor: selectedCategory === cat ? '#059669' : '#ffffff',
                         color: selectedCategory === cat ? '#ffffff' : '#374151',
                         borderColor: selectedCategory === cat ? '#059669' : '#d1d5db',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s', // 色変化のみスムーズに
+                        transition: 'background-color 0.2s', 
                         fontWeight: 'bold',
                         fontSize: '10px'
                       }}
@@ -695,16 +684,14 @@ return (
                   <button 
                       type="button" 
                       key={method} 
-                      // 修正：ここを setSelectedPayment に変更
-                      onClick={() => setSelectedPayment(method)}
+                      onClick={() => setPaymentMethod(method)}
                       style={{
                         padding: '10px 18px',
                         borderRadius: '12px',
                         border: '2px solid',
-                        // 修正：選択判定を selectedPayment に変更
-                        backgroundColor: selectedPayment === method ? '#059669' : '#ffffff',
-                        color: selectedPayment === method ? '#ffffff' : '#374151',
-                        borderColor: selectedPayment === method ? '#059669' : '#d1d5db',
+                        backgroundColor: paymentMethod === method ? '#059669' : '#ffffff',
+                        color: paymentMethod === method ? '#ffffff' : '#374151',
+                        borderColor: paymentMethod === method ? '#059669' : '#d1d5db',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s',
                         fontWeight: 'bold',
@@ -734,8 +721,8 @@ return (
                     color: '#ffffff',
                     fontWeight: '900',
                     borderRadius: '10px',
-                    fontSize: '10x',
-                    border: 'none', // 影を削除
+                    fontSize: '10px',
+                    border: 'none', 
                     cursor: 'pointer',
                     transition: 'background-color 0.1s'
                   }}
@@ -814,7 +801,6 @@ return (
         </div>
       </div>
 
-
        {/* 📅 カレンダー表示をここに配置 */}
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mb-6">
@@ -869,4 +855,4 @@ return (
       </div>
     </main>
   );
-} // ここでHomeコンポーネントを閉じる
+}

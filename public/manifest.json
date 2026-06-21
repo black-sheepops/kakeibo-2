@@ -4,9 +4,9 @@
   "display": "standalone",
   "scope": "/",
   "start_url": "/",
-  "name": "スマート家計簿 Presets",
+  "name": "コツコツ家計簿",
   "short_name": "家計簿",
-  "description": "サクサク入力できるカード型UIの家計簿アプリ",
+  "description": "家計簿アプリ",
   "icons": [
     {
       "src": "myicon.png",

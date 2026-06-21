@@ -1,6 +1,6 @@
 // hooks/useKakeibo.ts
 import { useState, useEffect } from 'react';
-import { getRecords, deleteRecordById } from '../lib/api';
+import { fetchRecords, deleteRecordById } from '../lib/api';
 
 export const useKakeibo = (targetYear: number, targetMonth: number) => {
   const [records, setRecords] = useState<any[]>([]);
@@ -9,7 +9,7 @@ export const useKakeibo = (targetYear: number, targetMonth: number) => {
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const data = await getRecords(targetYear, targetMonth);
+      const data = await fetchRecords(targetYear, targetMonth); 
       setRecords(data || []);
     } finally {
       setLoading(false);

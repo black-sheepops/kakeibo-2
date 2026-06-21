@@ -5,7 +5,7 @@ import 'react-calendar/dist/Calendar.css'; // カレンダーのCSSをインポ�
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient"; // 1行でこれだけ！
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
-import { Bar, Doughnut } from "react-chartjs-2";
+
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 

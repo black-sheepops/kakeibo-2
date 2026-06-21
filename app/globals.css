@@ -8,4 +8,7 @@ body {
   overflow-x: hidden;
   /* 画面幅全体をはみ出さないように設定 */
   width: 100%;
+
+  overscroll-behavior-y: none; /* スマホ特有のスクロール時の跳ね返りを防止 */
+  -webkit-tap-highlight-color: transparent; /* ボタンをタップした時の青い枠を消す */
 }

@@ -24,6 +24,19 @@ export default function RootLayout({
       <body className={`${inter.className} overflow-x-hidden w-full`}>
         {children}
       </body>
+      <script dangerouslySetInnerHTML={{
+  __html: `
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(function(registration) {
+          console.log('SW登録成功:', registration.scope);
+        }, function(err) {
+          console.log('SW登録失敗:', err);
+        });
+      });
+    }
+  `
+}} />
     </html>
   );
 }

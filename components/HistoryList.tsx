@@ -16,6 +16,7 @@ export default function HistoryList({
   startEdit: (rec: any) => void;
 }) {
   return (
+    <>
     <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-6 mt-6">
       <p className="text-xs font-bold text-gray-400 mb-2">リスト({targetMonth}月)</p>
       <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -47,9 +48,10 @@ export default function HistoryList({
               </div>
             </div>
 
-          </div>
-        ))}
-      </div>
-    </div>
+           </div>
+         ))}
+       </div>
+     </div>
+    </>
   );
 }

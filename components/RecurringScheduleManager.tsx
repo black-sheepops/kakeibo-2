@@ -1,12 +1,11 @@
 import React from 'react';
-import { AutoButton } from '../types/index';
-import AppButton from './AppButton';
 import { AutoSchedule } from '../types/index';
+import AppButton from './AppButton';
 
 // 1. すべてのpropsの型をインターフェースとして定義
-interface RecurringScheduleManagerProps {
+export interface RecurringScheduleManagerProps {
   schedules: AutoSchedule[];
-  onDelete: (id: number) => void; // string から number へ変更
+  onDelete: (id: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   schLabel: string;
   setSchLabel: (val: string) => void;
@@ -18,18 +17,17 @@ interface RecurringScheduleManagerProps {
   setSchPayment: (val: string) => void;
   schInterval: "monthly" | "weekly";
   setSchInterval: (val: "monthly" | "weekly") => void;
-  schDay: string;
+  schDay: number;
   setSchDay: (val: string) => void;
   schMemo: string;
   setSchMemo: (val: string) => void;
   quickCategories: string[];
   paymentMethods: string[];
   weekDays: string[];
-  editingSchId: number | null; // string | null から number | null へ変更
-  setEditingSchId: (id: number | null) => void; // 同上
+  editingSchId: number | null;
+  setEditingSchId: (id: number | null) => void;
 }
 
-// 2. 引数に型を適用
 export default function RecurringScheduleManager(props: RecurringScheduleManagerProps) {
   const {
     schedules, onDelete, onSubmit,

@@ -91,8 +91,12 @@ export default function InputForm({
             <p className="text-[10px] font-bold text-gray-400 mb-2">支払い方法</p>
             <div className="grid grid-cols-4 gap-2">
               {paymentMethods.map((method) => (
-                <AppButton key={method} onClick={() => setSelectedPayment(method)}
-                  variant={selectedPayment === method ? "main" : "sub"} className="text-[10px]">
+                <AppButton 
+                  key={method} 
+                  onClick={() => setSelectedPayment(method)} // 統一した State を更新する
+                  variant={selectedPayment === method ? "main" : "sub"} // 統一した State で色を変える
+                  className="text-[10px]"
+                >
                   {method}
                 </AppButton>
               ))}

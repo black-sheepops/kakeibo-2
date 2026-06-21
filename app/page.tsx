@@ -421,7 +421,7 @@ export default function Home() {
   };
 
   // ボタン削除
-  const handleDeleteButton = async (id: number) => {
+  const handleDeleteButton = async (id: string) => {
     if (!confirm("このワンタップボタンを削除しますか？")) return;
     await supabase.from("auto_buttons").delete().eq("id", id);
     await fetchData();

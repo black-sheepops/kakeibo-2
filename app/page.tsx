@@ -61,7 +61,7 @@ export default function Home() {
   const [btnCategory, setBtnCategory] = useState<string>("");
   const [btnMemo, setBtnMemo] = useState<string>("");
   const [btnPayment, setBtnPayment] = useState<string>("現金");
-  const [editingBtnId, setEditingBtnId] = useState<number | null>(null);
+  const [editingBtnId, setEditingBtnId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -76,8 +76,8 @@ export default function Home() {
   const [targetMonth, setTargetMonth] = useState<number>(new Date().getMonth() + 1);
   const [scheduleLabel, setScheduleLabel] = useState<string>("");
   const [scheduleAmount, setScheduleAmount] = useState<string>("");
-  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
-  const [editingSchId, setEditingSchId] = useState<number | null>(null); // 追加
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editingSchId, setEditingSchId] = useState<string | null>(null); // 追加
 
   // スケジュール登録フォーム用
   const [schLabel, setSchLabel] = useState<string>("");
@@ -87,7 +87,7 @@ export default function Home() {
   const [schPayment, setSchPayment] = useState<string>("現金");
   const [schInterval, setSchInterval] = useState<"monthly" | "weekly">("monthly");
   const [schDay, setSchDay] = useState<string>("1");
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const quickPresets = [
     { label: "練習", amount: "500", category: "バドミントン" },

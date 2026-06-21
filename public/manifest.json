@@ -1,15 +1,16 @@
 {
   "name": "コツコツ家計簿",
   "short_name": "家計簿",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#10b981",
   "icons": [
     {
-      "src": "/myicon.png",  // 最初の / を忘れずに追加！
+      "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "display": "standalone",
-  "start_url": "/",
-  "theme_color": "#10b981"
+  ]
 }

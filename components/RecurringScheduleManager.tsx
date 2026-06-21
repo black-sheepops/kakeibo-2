@@ -1,4 +1,5 @@
-import AppButton from "./AppButton";
+import { AutoButton } from '../types/index';
+import AppButton from './AppButton';
 
 export default function RecurringScheduleManager({
   schedules,

@@ -1,7 +1,30 @@
-import AppButton from "./AppButton";
+import React from 'react';
+import { AutoButton } from '../types/index';
+import AppButton from './AppButton';
+
+interface QuickButtonManagerProps {
+  buttons: AutoButton[];
+  onDelete: (id: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  editingBtnId: string | null;
+  setEditingBtnId: (id: string | null) => void;
+  btnLabel: string;
+  setBtnLabel: (val: string) => void;
+  btnAmount: string;
+  setBtnAmount: (val: string) => void;
+  btnCategory: string;
+  setBtnCategory: (val: string) => void;
+  btnMemo: string;
+  setBtnMemo: (val: string) => void;
+  btnPayment: string;
+  setBtnPayment: (val: string) => void;
+  quickCategories: string[];
+  paymentMethods: string[];
+  autoButtons: AutoButton[];
+  handleAutoSelect: (btn: AutoButton) => void;
+}
 
 export default function QuickButtonManager({
-  buttons,
   onDelete,
   onSubmit,
   editingBtnId, setEditingBtnId,
@@ -14,7 +37,7 @@ export default function QuickButtonManager({
   paymentMethods,
   autoButtons,
   handleAutoSelect
-}) {
+}: QuickButtonManagerProps) {
   return (
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
@@ -22,7 +45,6 @@ export default function QuickButtonManager({
 
         <div className="grid grid-cols-4 gap-2 w-full">
           {autoButtons?.map((btn) => (
-            // ★ここを relative にすることで削除ボタンを右上に配置できます
             <div key={btn.id} className="relative w-full min-w-0">
               <AppButton
                 onClick={() => handleAutoSelect?.(btn)}
@@ -32,7 +54,6 @@ export default function QuickButtonManager({
                 <span className="text-[10px] font-semibold text-emerald-600">￥{btn.amount.toLocaleString()}</span>
               </AppButton>
 
-              {/* 削除ボタン：AppButton の外側（div の中）に配置 */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -48,7 +69,6 @@ export default function QuickButtonManager({
       </div>
     
       <form onSubmit={onSubmit} className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-3">
-        {/* フォーム部分はそのまま */}
         <h3 className="text-sm font-bold text-indigo-800">ボタンの編集・作成</h3>
         <input type="text" placeholder="ボタン名" value={btnLabel} onChange={(e) => setBtnLabel(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />
         <input type="number" placeholder="金額" value={btnAmount} onChange={(e) => setBtnAmount(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />

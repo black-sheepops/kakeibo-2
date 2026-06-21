@@ -12,10 +12,11 @@ import CalendarCard from '../components/CalendarCard'
 import ReportSection from '../components/ReportSection';
 import InputForm from '../components/InputForm';
 import SettingForm from '../components/SettingForm';
-import QuickButtonManager from '../components/QuickButtonManager.tsx';
-import RecurringScheduleManager from '../components/RecurringScheduleManager.tsx';
+import QuickButtonManager from '../components/QuickButtonManager';
+import RecurringScheduleManager from '../components/RecurringScheduleManager';
 import Card from '../components/Card';
 import AppButton from '@/components/AppButton';
+import { AutoButton } from '../types/index';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -46,15 +47,7 @@ interface AutoSchedule {
   last_executed_at: string | null;
 }
 
-interface AutoButton {
-  id: number;
-  label: string;
-  amount: number;
-  category: string;
-  memo: string;
-  payment_method: string;
-  sort_order: number;
-}
+
 
 export default function Home() {
   // --- ① すべての useState（状態管理）をコンポーネントのトップレベルに綺麗に並べる ---
@@ -198,9 +191,10 @@ export default function Home() {
       .select("*")
       .order("id", { ascending: true });
 
-    if (schData)
+    if (schData) {
       setSchedules(schData);
-    await checkAndTriggerAutoInput(schData);
+      await checkAndTriggerAutoInput(schData);
+    }
 
     const { data: btnData } = await supabase
       .from("auto_buttons")
@@ -512,7 +506,7 @@ export default function Home() {
                 {isMounted && (
                   <CalendarCard
                     viewDate={currentViewDate}
-                    onDateChange={(date) => {
+                    onDateChange={(date: Date | null) => {
                       if (date) {
                         setTargetYear(date.getFullYear());
                         setTargetMonth(date.getMonth() + 1);

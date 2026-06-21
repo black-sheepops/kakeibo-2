@@ -1,6 +1,7 @@
 // components/HistoryList.tsx
 import React from "react";
-import AppButton from "./AppButton";
+import { AutoButton } from '../types/index';
+import AppButton from './AppButton';
 
 // ここでpage.tsxからデータや関数を受け取る設定をします
 export default function HistoryList({
@@ -22,7 +23,7 @@ export default function HistoryList({
           <div key={rec.id} className="p-2.5 bg-gray-50 rounded-xl border text-xs flex justify-between items-center w-full">
 
             {/* 左側：min-w-0 を追加して、幅を制限する */}
-            <div className="space-y-1 min-w-0 flex-1 pr-2">
+            <div className="space-y-1 min-w-0 flex-1 pr-3">
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">
                   {rec.date ? rec.date.replace(/^\d{4}-/, "") : "なし"}
@@ -38,7 +39,7 @@ export default function HistoryList({
             </div>
 
             {/* 右側：w-24 など固定幅にして、配置を揃える */}
-            <div className="flex items-center gap-2 shrink-0 w-24 justify-end">
+            <div className="flex items-center gap-1 shrink-0 w-18 justify-end">
               <span className="font-bold whitespace-nowrap">￥{rec.amount.toLocaleString()}</span>
               <div className="flex flex-col gap-1">
                 <AppButton variant="sub" onClick={() => startEdit(rec)} className="text-amber-600 font-bold text-[10px] bg-amber-100 px-2 py-0.5 rounded">編集</AppButton>

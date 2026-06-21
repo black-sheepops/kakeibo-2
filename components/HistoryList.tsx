@@ -40,7 +40,7 @@ export default function HistoryList({
 
             {/* 右側：w-24 など固定幅にして、配置を揃える */}
             <div className="flex items-center gap-1 shrink-0 w-18 justify-end">
-              <span className="font-bold whitespace-nowrap">￥{rec.amount.toLocaleString()}</span>
+              <span className="font-bold">￥{Number(rec.amount || 0).toLocaleString()}</span>
               <div className="flex flex-col gap-1">
                 <AppButton variant="sub" onClick={() => startEdit(rec)} className="text-amber-600 font-bold text-[10px] bg-amber-100 px-2 py-0.5 rounded">編集</AppButton>
                 <AppButton variant="danger" onClick={() => onDelete(rec.id)} className="text-red-500 font-bold text-[10px] bg-red-100 px-2 py-0.5 rounded">削除</AppButton>

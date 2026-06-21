@@ -2,6 +2,7 @@ import React from 'react';
 import { AutoButton } from '../types/index';
 import AppButton from './AppButton';
 
+// ★ここに定義を移動または追加してください
 interface QuickButtonManagerProps {
   buttons: AutoButton[];
   onDelete: (id: string) => void;
@@ -23,7 +24,6 @@ interface QuickButtonManagerProps {
   autoButtons: AutoButton[];
   handleAutoSelect: (btn: AutoButton) => void;
 }
-
 export default function QuickButtonManager({
   onDelete,
   onSubmit,
@@ -57,7 +57,8 @@ export default function QuickButtonManager({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDelete(btn.id);
+                  // プロップスの型定義に従い、必要に応じて String() またはそのまま渡す
+                  onDelete(String(btn.id)); 
                 }}
                 className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-red-100 text-red-800 text-[10px] rounded-full hover:bg-red-200 shadow-sm"
               >
@@ -84,6 +85,7 @@ export default function QuickButtonManager({
         
         <input type="text" placeholder="メモ" value={btnMemo} onChange={(e) => setBtnMemo(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-white" />
         
+        {/* 送信ボタンは form の中にあるため type="submit" で自動的に onSubmit が発火します */}
         <AppButton variant="main" type="submit" className="w-full py-2">
           {editingBtnId ? "ボタンを更新" : "ボタンを追加"}
         </AppButton>

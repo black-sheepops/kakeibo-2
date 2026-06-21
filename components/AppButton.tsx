@@ -1,6 +1,14 @@
 import React from 'react';
 
 
+// ここに型定義を追加します
+interface AppButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit" | "reset";
+  variant?: 'main' | 'sub' | 'danger';
+  className?: string;
+}
 
 export default function AppButton({ 
   children, 
@@ -8,9 +16,9 @@ export default function AppButton({
   type = "button", 
   variant = "sub", 
   className = "" 
-}: AppButtonProps) { // ここで一度だけ型を適用します
+}: AppButtonProps) {
 
-  // 色の定義をCSSプロパティとして保持
+  // 色の定義
   const getBackgroundColor = (variant: string) => {
     switch (variant) {
       case 'main': return '#238566';

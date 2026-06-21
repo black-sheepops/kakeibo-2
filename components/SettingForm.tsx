@@ -1,13 +1,42 @@
 // components/SettingForm.tsx
+import { AutoButton, AutoSchedule } from '../types/index';
+
+interface SettingFormProps {
+  autoButtons: AutoButton[];
+  setEditingBtnId: (id: number | null) => void;
+  setBtnLabel: (val: string) => void;
+  setBtnAmount: (val: string) => void;
+  setBtnCategory: (val: string) => void;
+  setBtnMemo: (val: string) => void;
+  handleButtonSubmit: (e: React.FormEvent) => void;
+  btnLabel: string;
+  btnAmount: string;
+  btnCategory: string;
+  btnPayment: string;
+  setBtnPayment: (val: string) => void;
+  btnMemo: string;
+  quickCategories: string[];
+  paymentMethods: string[];
+  editingBtnId: number | null;
+  schedules: AutoSchedule[];
+  handleDeleteSchedule: (id: number) => void;
+  handleScheduleSubmit: (e: React.FormEvent) => void;
+  setScheduleLabel: (val: string) => void;
+  setScheduleAmount: (val: string) => void;
+  scheduleLabel: string;
+  scheduleAmount: string;
+  setEditingScheduleId: (id: number | null) => void;
+  editingScheduleId: number | null;
+}
+
 export default function SettingForm({
   autoButtons, setEditingBtnId, setBtnLabel, setBtnAmount,
   setBtnCategory, setBtnMemo, handleButtonSubmit, btnLabel, btnAmount, 
   btnCategory, btnPayment, setBtnPayment, btnMemo, 
   quickCategories, paymentMethods, editingBtnId,
-  // ★追加: 固定費データを表示するために必要
-  schedules, handleDeleteSchedule ,handleScheduleSubmit, setScheduleLabel, setScheduleAmount, 
+  schedules, handleDeleteSchedule, handleScheduleSubmit, setScheduleLabel, setScheduleAmount, 
   scheduleLabel, scheduleAmount, setEditingScheduleId, editingScheduleId
-}) {
+}: SettingFormProps) {
 return (
     // ★ここを <> で囲み、一番下で </> で閉じます
     <>

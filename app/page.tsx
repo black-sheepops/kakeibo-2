@@ -77,7 +77,7 @@ export default function Home() {
   const [scheduleLabel, setScheduleLabel] = useState<string>("");
   const [scheduleAmount, setScheduleAmount] = useState<string>("");
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
-  const [editingSchId, setEditingSchId] = useState<string | null>(null); // 追加
+  const [editingSchId, setEditingSchId] = useState<number | null>(null); // 追加
 
   // スケジュール登録フォーム用
   const [schLabel, setSchLabel] = useState<string>("");
@@ -293,7 +293,7 @@ export default function Home() {
   };
 
   const startEdit = (rec: KakeiboRecord) => {
-    setEditingId(rec.id); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo);
+    setEditingId(String(rec.id)); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo);
     setPaymentMethod(rec.payment_method || "現金"); setDate(rec.date || getTodayString());
     window.scrollTo({ top: 0, behavior: "smooth" });
   };

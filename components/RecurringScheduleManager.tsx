@@ -1,26 +1,52 @@
+import React from 'react';
 import { AutoButton } from '../types/index';
 import AppButton from './AppButton';
+import { AutoSchedule } from '../types/index';
 
-export default function RecurringScheduleManager({
-  schedules,
-  onDelete,
-  onSubmit,
-  // 親から渡されるべき state や props を追加
-  schLabel, setSchLabel,
-  schAmount, setSchAmount,
-  schCategory, setSchCategory,
-  schPayment, setSchPayment,
-  schInterval, setSchInterval,
-  schDay, setSchDay,
-  schMemo, setSchMemo,
-  quickCategories,
-  paymentMethods,
-  weekDays,
-  editingSchId,        // 追加
-  setEditingSchId      // 追加
-}) {
+// 1. すべてのpropsの型をインターフェースとして定義
+interface RecurringScheduleManagerProps {
+  schedules: AutoSchedule[];
+  onDelete: (id: number) => void; // string から number へ変更
+  onSubmit: (e: React.FormEvent) => void;
+  schLabel: string;
+  setSchLabel: (val: string) => void;
+  schAmount: string;
+  setSchAmount: (val: string) => void;
+  schCategory: string;
+  setSchCategory: (val: string) => void;
+  schPayment: string;
+  setSchPayment: (val: string) => void;
+  schInterval: "monthly" | "weekly";
+  setSchInterval: (val: "monthly" | "weekly") => void;
+  schDay: string;
+  setSchDay: (val: string) => void;
+  schMemo: string;
+  setSchMemo: (val: string) => void;
+  quickCategories: string[];
+  paymentMethods: string[];
+  weekDays: string[];
+  editingSchId: number | null; // string | null から number | null へ変更
+  setEditingSchId: (id: number | null) => void; // 同上
+}
 
-  console.log("受け取ったスケジュール:", schedules);
+// 2. 引数に型を適用
+export default function RecurringScheduleManager(props: RecurringScheduleManagerProps) {
+  const {
+    schedules, onDelete, onSubmit,
+    schLabel, setSchLabel,
+    schAmount, setSchAmount,
+    schCategory, setSchCategory,
+    schPayment, setSchPayment,
+    schInterval, setSchInterval,
+    schDay, setSchDay,
+    schMemo, setSchMemo,
+    quickCategories,
+    paymentMethods,
+    weekDays,
+    editingSchId,
+    setEditingSchId
+  } = props;
+
   const handleIntervalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value as "monthly" | "weekly";
     setSchInterval(value);

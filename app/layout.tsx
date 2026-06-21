@@ -15,7 +15,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#10b981" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/myicon.png" /> {/* これがSafariのホーム画面用アイコン */}
+        <link rel="apple-touch-icon" href="/icon.png" /> {/* これがSafariのホーム画面用アイコン */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>

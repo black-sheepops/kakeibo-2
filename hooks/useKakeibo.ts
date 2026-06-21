@@ -1,6 +1,6 @@
 // hooks/useKakeibo.ts
 import { useState, useEffect } from 'react';
-import { fetchRecords, deleteRecordById } from '../lib/api';
+import { fetchRecords, deleteRecord } from '../lib/api';
 
 export const useKakeibo = (targetYear: number, targetMonth: number) => {
   const [records, setRecords] = useState<any[]>([]);
@@ -17,7 +17,7 @@ export const useKakeibo = (targetYear: number, targetMonth: number) => {
   };
 
   const removeRecord = async (id: number) => {
-    await deleteRecordById(id);
+    await deleteRecord(id);
     await loadRecords();
   };
 

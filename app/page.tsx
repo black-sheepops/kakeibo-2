@@ -558,63 +558,63 @@ export default function Home() {
               </div>
             </form>
 
-{/* 📊 レポートカード */}
-<div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
-  <div className="flex justify-between items-center border-b pb-3">
-    <h2 className="text-sm font-bold text-gray-700">📊 支出レポート</h2>
-    <div className="flex gap-2">
-      <select value={targetYear} onChange={(e) => setTargetYear(parseInt(e.target.value, 10))} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 font-bold focus:outline-none">
-        {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}年</option>)}
-      </select>
-      <select value={targetMonth} onChange={(e) => setTargetMonth(parseInt(e.target.value, 10))} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 font-bold focus:outline-none">
-        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}月</option>)}
-      </select>
-    </div>
-  </div>
+            {/* 📊 レポートカード */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h2 className="text-sm font-bold text-gray-700">📊 支出レポート</h2>
+                <div className="flex gap-2">
+                  <select value={targetYear} onChange={(e) => setTargetYear(parseInt(e.target.value, 10))} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 font-bold focus:outline-none">
+                    {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}年</option>)}
+                  </select>
+                  <select value={targetMonth} onChange={(e) => setTargetMonth(parseInt(e.target.value, 10))} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 font-bold focus:outline-none">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}月</option>)}
+                  </select>
+                </div>
+              </div>
 
-  {/* 合計表示 */}
-  <div className="text-center py-2">
-    <p className="text-[10px] font-bold text-gray-400">今月の合計支出</p>
-    <p className="text-3xl font-black text-gray-800 tracking-tight">￥{monthlyTotal.toLocaleString()}</p>
-  </div>
+              {/* 合計表示 */}
+              <div className="text-center py-2">
+                <p className="text-[10px] font-bold text-gray-400">今月の合計支出</p>
+                <p className="text-3xl font-black text-gray-800 tracking-tight">￥{monthlyTotal.toLocaleString()}</p>
+              </div>
 
-  {/* 円グラフ（カテゴリ合計） */}
-  <div className="h-48 w-full flex justify-center">
-    {doughnutData.datasets[0].data.length > 0 ? (
-      <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
-    ) : (
-      <div className="flex items-center text-xs text-gray-400">データなし</div>
-    )}
-  </div>
+              {/* 円グラフ（カテゴリ合計） */}
+              <div className="h-48 w-full flex justify-center">
+                {doughnutData.datasets[0].data.length > 0 ? (
+                  <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
+                ) : (
+                  <div className="flex items-center text-xs text-gray-400">データなし</div>
+                )}
+              </div>
 
-  {/* 詳細テーブルエリア */}
-  <div className="grid grid-cols-2 gap-4 text-[11px]">
-    {/* カテゴリ別内訳 */}
-    <div>
-      <p className="font-bold text-gray-400 mb-2">カテゴリ別</p>
-      <div className="space-y-1">
-        {Object.entries(categoryTotals).map(([cat, total]) => (
-          <div key={cat} className="flex justify-between border-b pb-1">
-            <span className="text-gray-600">{cat}</span>
-            <span className="font-bold">￥{total.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-    {/* 支払別内訳 */}
-    <div>
-      <p className="font-bold text-gray-400 mb-2">支払別</p>
-      <div className="space-y-1">
-        {Object.entries(paymentTotals).map(([pay, total]) => (
-          <div key={pay} className="flex justify-between border-b pb-1">
-            <span className="text-gray-600">{pay}</span>
-            <span className="font-bold">￥{total.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-</div>
+              {/* 詳細テーブルエリア */}
+              <div className="grid grid-cols-2 gap-4 text-[11px]">
+                {/* カテゴリ別内訳 */}
+                <div>
+                  <p className="font-bold text-gray-400 mb-2">カテゴリ別</p>
+                  <div className="space-y-1">
+                    {Object.entries(categoryTotals).map(([cat, total]) => (
+                      <div key={cat} className="flex justify-between border-b pb-1">
+                        <span className="text-gray-600">{cat}</span>
+                        <span className="font-bold">￥{total.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* 支払別内訳 */}
+                <div>
+                  <p className="font-bold text-gray-400 mb-2">支払別</p>
+                  <div className="space-y-1">
+                    {Object.entries(paymentTotals).map(([pay, total]) => (
+                      <div key={pay} className="flex justify-between border-b pb-1">
+                        <span className="text-gray-600">{pay}</span>
+                        <span className="font-bold">￥{total.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* 📅 カレンダーカード (画面いっぱいに広がるように修正) */}
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col flex-1 w-full min-h-[400px]">

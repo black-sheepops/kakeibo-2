@@ -50,7 +50,7 @@ interface AutoButton {
   sort_order: number;
 }
 
-// 共通ボタンコンポーネント（見た目を統一するためファイル内に配置）
+// 共通ボタンコンポーネント
 function AppButton({ children, onClick, type = "button", variant = "sub", className = "" }: { children: React.ReactNode, onClick?: () => void, type?: "button" | "submit" | "reset", variant?: 'main' | 'sub' | 'danger', className?: string }) {
   const getBackgroundColor = (v: string) => {
     switch (v) {
@@ -79,7 +79,6 @@ function AppButton({ children, onClick, type = "button", variant = "sub", classN
 }
 
 export default function Home() {
-  // ① すべての useState をトップレベルで宣言
   const [isMounted, setIsMounted] = useState(false);
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
   const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
@@ -150,18 +149,19 @@ export default function Home() {
       }
 
       if (shouldExecute && targetDateStr) {
+        const autoMemoText = `[自動] ${sch.memo || sch.label}`;
         const { data: existing } = await supabase
           .from("kakeibo")
           .select("id")
-          .eq("memo", `[自動] ${sch.memo || sch.label}`)
+          .eq("memo", autoMemoText)
           .eq("date", targetDateStr)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           newInserts.push({
             amount: sch.amount,
             category: sch.category,
-            memo: `[自動] ${sch.memo || sch.label}`,
+            memo: autoMemoText,
             payment_method: sch.payment_method,
             date: targetDateStr
           });
@@ -179,7 +179,6 @@ export default function Home() {
         }).eq("id", id);
       }));
       fetchData();
-      alert("🤖 定期自動入力を実行しました！");
     }
   };
 
@@ -318,7 +317,6 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ワンタップボタンが押された時の処理（ここで全項目がフォームに反映されます）
   const handleAutoSelect = (btn: AutoButton) => {
     setAmount(btn.amount.toString());
     setSelectedCategory(btn.category);
@@ -373,17 +371,6 @@ export default function Home() {
     }],
   };
 
-  const barData = {
-    labels: last6Months.map(m => `${m.month}月`),
-    datasets: [{
-      label: "支出合計 (円)",
-      data: last6MonthsTotals,
-      backgroundColor: "rgba(16, 185, 129, 0.6)",
-      borderColor: "rgb(16, 185, 129)",
-      borderWidth: 1,
-    }],
-  };
-
   const tileContent = React.useMemo(() => {
     return ({ date, view }: { date: Date; view: string }) => {
       if (view === 'month') {
@@ -398,7 +385,6 @@ export default function Home() {
     };
   }, [dailyTotals]);
 
-  // SSR回避
   if (!isMounted) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p>読み込み中...</p></div>;
 
   return (
@@ -574,13 +560,11 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 合計表示 */}
               <div className="text-center py-2">
                 <p className="text-[10px] font-bold text-gray-400">今月の合計支出</p>
                 <p className="text-3xl font-black text-gray-800 tracking-tight">￥{monthlyTotal.toLocaleString()}</p>
               </div>
 
-              {/* 円グラフ（カテゴリ合計） */}
               <div className="h-48 w-full flex justify-center">
                 {doughnutData.datasets[0].data.length > 0 ? (
                   <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
@@ -589,9 +573,7 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 詳細テーブルエリア */}
               <div className="grid grid-cols-2 gap-4 text-[11px]">
-                {/* カテゴリ別内訳 */}
                 <div>
                   <p className="font-bold text-gray-400 mb-2">カテゴリ別</p>
                   <div className="space-y-1">
@@ -603,7 +585,6 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
-                {/* 支払別内訳 */}
                 <div>
                   <p className="font-bold text-gray-400 mb-2">支払別</p>
                   <div className="space-y-1">
@@ -618,7 +599,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 📅 カレンダーカード (画面いっぱいに広がるように修正) */}
+            {/* 📅 カレンダーカード */}
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col flex-1 w-full min-h-[400px]">
               <h2 className="text-sm font-bold text-gray-700 mb-3 px-2">📅 登録履歴カレンダー</h2>
               <div className="flex-1 w-full h-full [&>.react-calendar]:w-full [&>.react-calendar]:h-full [&>.react-calendar]:border-none [&>.react-calendar]:font-bold [&>.react-calendar]:text-sm">

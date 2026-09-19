@@ -280,7 +280,7 @@ export default function Home() {
       return;
     }
     try {
-      if (editingScheduleId) {
+      if (editingScheduleId !== null) {
         await supabase.from("auto_schedules").update({
           label: schLabel, amount: parseInt(schAmount, 10), category: schCategory, memo: schMemo, payment_method: schPayment, interval_type: schInterval, target_day: parseInt(schDay, 10)
         }).eq("id", editingScheduleId);
@@ -491,8 +491,10 @@ export default function Home() {
                 </div>
                 <input type="text" placeholder="メモ" value={schMemo} onChange={(e) => setSchMemo(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white" />
                 <div className="flex gap-2">
-                  <AppButton type="submit" variant="main" className="flex-1 py-3 text-sm">{editingScheduleId ? "🔄 更新" : "➕ 追加"}</AppButton>
-                  {editingScheduleId && <AppButton type="button" onClick={() => { setEditingScheduleId(null); setSchLabel(""); setSchAmount(""); setSchCategory(""); setSchMemo(""); setSchPayment("現金"); }} className="flex-1 py-3 text-sm">キャンセル</AppButton>}
+                  <AppButton type="submit" variant="main" className="flex-1 py-3 text-sm">{editingScheduleId !== null ? "🔄 更新" : "➕ 追加"}</AppButton>
+                  {editingScheduleId !== null && (
+                    <AppButton type="button" onClick={() => { setEditingScheduleId(null); setSchLabel(""); setSchAmount(""); setSchCategory(""); setSchMemo(""); setSchPayment("現金"); }} className="flex-1 py-3 text-sm">キャンセル</AppButton>
+                  )}
                 </div>
               </form>
             </div>

@@ -272,6 +272,7 @@ export default function Home() {
     } catch (error) { alert("ボタンの保存に失敗しました"); }
   };
 
+  // 💡 固定費（定期ルール）の登録・更新処理
   const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schLabel || !schAmount || !schCategory) {
@@ -281,13 +282,27 @@ export default function Home() {
     try {
       if (editingScheduleId !== null) {
         await supabase.from("auto_schedules").update({
-          label: schLabel, amount: parseInt(schAmount, 10), category: schCategory, memo: schMemo, payment_method: schPayment, interval_type: schInterval, target_day: parseInt(schDay, 10)
+          label: schLabel,
+          amount: parseInt(schAmount, 10),
+          category: schCategory,
+          memo: schMemo,
+          payment_method: schPayment,
+          interval_type: schInterval,
+          target_day: parseInt(schDay, 10)
         }).eq("id", editingScheduleId);
       } else {
         await supabase.from("auto_schedules").insert([{
-          label: schLabel, amount: parseInt(schAmount, 10), category: schCategory, memo: schMemo, payment_method: schPayment, interval_type: schInterval, target_day: parseInt(schDay, 10), last_executed_at: null
+          label: schLabel,
+          amount: parseInt(schAmount, 10),
+          category: schCategory,
+          memo: schMemo,
+          payment_method: schPayment,
+          interval_type: schInterval,
+          target_day: parseInt(schDay, 10),
+          last_executed_at: null
         }]);
       }
+      // フォームをクリアしてIDをリセット
       setSchLabel(""); setSchAmount(""); setSchCategory(""); setSchMemo(""); setSchPayment("現金");
       setEditingScheduleId(null);
       await fetchData();
@@ -350,17 +365,6 @@ export default function Home() {
     acc[method] = (acc[method] || 0) + r.amount;
     return acc;
   }, {} as Record<string, number>);
-
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(targetYear, targetMonth - 1);
-    d.setMonth(d.getMonth() - i);
-    return { year: d.getFullYear(), month: d.getMonth() + 1 };
-  }).reverse();
-
-  const last6MonthsTotals = last6Months.map(m => {
-    const targetPrefix = `${m.year}-${String(m.month).padStart(2, "0")}`;
-    return records.filter(r => r.date && r.date.startsWith(targetPrefix)).reduce((sum, r) => sum + Number(r.amount), 0);
-  });
 
   const doughnutData = {
     labels: quickCategories.filter(c => (categoryTotals[c] || 0) > 0),
@@ -446,7 +450,20 @@ export default function Home() {
               <div className="flex flex-col gap-2">
                 {schedules.length === 0 ? <p className="text-xs text-gray-400 text-center py-4">登録データがありません</p> : schedules.map(s => (
                   <div key={s.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <button type="button" onClick={() => { setEditingScheduleId(s.id); setSchLabel(s.label); setSchAmount(s.amount.toString()); setSchCategory(s.category); setSchPayment(s.payment_method || "現金"); setSchInterval(s.interval_type); setSchDay(s.target_day.toString()); setSchMemo(s.memo); }} className="text-left flex-1 active:scale-95 transition-all">
+                    <button 
+                      type="button" 
+                      onClick={() => { 
+                        setEditingScheduleId(s.id); 
+                        setSchLabel(s.label); 
+                        setSchAmount(s.amount.toString()); 
+                        setSchCategory(s.category); 
+                        setSchPayment(s.payment_method || "現金"); 
+                        setSchInterval(s.interval_type); 
+                        setSchDay(s.target_day.toString()); 
+                        setSchMemo(s.memo || ""); 
+                      }} 
+                      className="text-left flex-1 active:scale-95 transition-all"
+                    >
                       <div className="font-bold text-emerald-700 text-xs">{s.label} <span className="text-gray-600">({s.amount.toLocaleString()}円)</span></div>
                       <div className="text-[10px] text-gray-500 mt-1">🔄 {s.interval_type === "monthly" ? `毎月${s.target_day}日` : `毎週${weekDays[s.target_day]}曜`} / 💳 {s.payment_method}</div>
                     </button>
@@ -472,7 +489,7 @@ export default function Home() {
                     <option value="weekly">毎週固定</option>
                   </select>
                   <select value={schDay} onChange={(e) => setSchDay(e.target.value)} className="p-2.5 text-xs border border-gray-200 rounded-xl bg-white">
-                    {schInterval === "monthly" ? Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}日</option>) : weekDays.map((w, idx) => <option key={idx} value={idx}>{w}曜日</option>)}
+                    {schInterval === "monthly" ? Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={String(d)}>{d}日</option>) : weekDays.map((w, idx) => <option key={idx} value={String(idx)}>{w}曜日</option>)}
                   </select>
                 </div>
                 <input type="text" placeholder="メモ" value={schMemo} onChange={(e) => setSchMemo(e.target.value)} className="w-full p-2.5 text-xs border border-gray-200 rounded-xl bg-white" />

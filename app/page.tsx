@@ -96,6 +96,8 @@ export default function Home() {
   const [isSettingMode, setIsSettingMode] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isTitleVisible, setIsTitleVisible] = useState(true);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const autoInputRunning = useRef(false);
   
   // データ群
@@ -322,6 +324,17 @@ export default function Home() {
         }
         setIsAdmin(data?.role === "admin");
       });
+  }, [session]);
+
+  useEffect(() => {
+    const title = titleRef.current;
+    if (!title) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsTitleVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(title);
+    return () => observer.disconnect();
   }, [session]);
 
   useEffect(() => {
@@ -683,20 +696,23 @@ export default function Home() {
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
         <header className="relative min-h-24 py-2">
-          <div className="absolute left-0 top-2">
+          <div
+            className={`fixed inset-x-4 top-2 z-30 mx-auto flex w-[calc(100%-2rem)] max-w-md items-start justify-between transition-opacity duration-200 ${isTitleVisible ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            aria-hidden={!isTitleVisible}
+          >
             <AuthPanel
               email={session?.user.email || null}
               onSignedIn={() => setIsSettingMode(false)}
               onSignedOut={() => setSession(null)}
             />
+            <div className="flex flex-col items-end gap-2">
+              {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
+              <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
+                {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
+              </button>
+            </div>
           </div>
-          <div className="absolute right-0 top-2 flex flex-col items-end gap-2">
-            {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
-            <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
-              {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
-            </button>
-          </div>
-          <h1 className="pt-16 text-center text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
+          <h1 ref={titleRef} className="pt-16 text-center text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
         </header>
 
         {isSettingMode ? (

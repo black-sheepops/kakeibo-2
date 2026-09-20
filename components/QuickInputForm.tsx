@@ -16,6 +16,12 @@ type Props = {
   paymentMethods: string[];
   paymentMethod: string;
   setPaymentMethod: (val: string) => void;
+  qrPaymentProvider: string;
+  setQrPaymentProvider: (val: string) => void;
+  qrPaymentProviders: string[];
+  creditCardProviders: string[];
+  creditCardProvider: string;
+  setCreditCardProvider: (val: string) => void;
   memo: string;
   setMemo: (val: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -36,6 +42,12 @@ export default function QuickInputForm({
   paymentMethods,
   paymentMethod,
   setPaymentMethod,
+  qrPaymentProvider,
+  setQrPaymentProvider,
+  qrPaymentProviders,
+  creditCardProviders,
+  creditCardProvider,
+  setCreditCardProvider,
   memo,
   setMemo,
   handleSubmit,
@@ -91,7 +103,22 @@ export default function QuickInputForm({
               <button
                 type="button"
                 key={method}
-                onClick={() => setPaymentMethod(method)}
+                onClick={() => {
+                  setPaymentMethod(method);
+                  setMemo("");
+                  if (method !== "QR決済") {
+                    setQrPaymentProvider("");
+                  }
+                  if (method === "クレジットカード" && !creditCardProvider) {
+                    const defaultProvider = creditCardProviders[0] || "";
+                    setCreditCardProvider(defaultProvider);
+                    if (defaultProvider) {
+                      setMemo(defaultProvider);
+                    }
+                  } else if (method !== "クレジットカード") {
+                    setCreditCardProvider("");
+                  }
+                }}
                 className={`px-4 py-2.5 rounded-xl font-bold text-[10px] transition active:scale-95 flex items-center justify-center ${paymentMethod === method ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}
               >
                 {method}
@@ -99,6 +126,54 @@ export default function QuickInputForm({
             ))}
           </div>
         </div>
+
+        {paymentMethod === "QR決済" && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 mb-2 px-1">決済会社</p>
+            <div className="grid grid-cols-3 gap-2">
+              {qrPaymentProviders.map((provider) => (
+                <button
+                  type="button"
+                  key={provider}
+                  onClick={() => {
+                    setQrPaymentProvider(provider);
+                    setMemo(provider);
+                  }}
+                  className={`px-3 py-2.5 rounded-xl font-bold text-[10px] transition active:scale-95 ${
+                    qrPaymentProvider === provider
+                      ? "bg-emerald-600 text-white"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {provider}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {paymentMethod === "クレジットカード" && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 mb-2 px-1">カード会社</p>
+            <div className="grid grid-cols-2 gap-2">
+              {creditCardProviders.map((provider) => (
+                <button
+                  type="button"
+                  key={provider}
+                  onClick={() => {
+                    setCreditCardProvider(provider);
+                    setMemo(provider);
+                  }}
+                  className={`px-3 py-2.5 rounded-xl font-bold text-[10px] transition active:scale-95 ${
+                    creditCardProvider === provider ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {provider}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <input type="text" placeholder="メモを入力 (任意)" value={memo} onChange={(e) => setMemo(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-emerald-400 transition" />
         

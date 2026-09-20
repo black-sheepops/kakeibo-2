@@ -24,6 +24,7 @@ interface ReportViewProps {
   allRecords: RecordItem[];
   startEdit: (r: RecordItem) => void;
   deleteRecord: (id: number) => void;
+  deleteRecords: (ids: number[]) => void;
 }
 
 export default function ReportView({
@@ -41,6 +42,7 @@ export default function ReportView({
   allRecords,
   startEdit,
   deleteRecord,
+  deleteRecords,
 }: ReportViewProps) {
   const [mounted, setMounted] = useState(false);
   const [selectedDayRecords, setSelectedDayRecords] = useState<RecordItem[] | null>(null);
@@ -80,6 +82,16 @@ export default function ReportView({
   const totalExpense = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
   const totalPayment = Object.values(paymentTotals).reduce((a, b) => a + b, 0);
 
+  const duplicateGroups = Array.from(
+    filteredRecords.filter((record) => record.memo?.includes("[自動]")).reduce((groups, record) => {
+      const key = JSON.stringify([record.amount, record.category, record.payment_method, record.memo || ""]);
+      const group = groups.get(key) || [];
+      group.push(record);
+      groups.set(key, group);
+      return groups;
+    }, new Map<string, RecordItem[]>())
+  ).map(([, group]) => group).filter((group) => group.length > 1);
+
   const barLabels = (barData?.labels as string[]) || [];
   const barValues = (barData?.datasets?.[0]?.data as number[]) || [0, 0, 0, 0, 0, 0];
   const maxBarVal = Math.max(...barValues, 1);
@@ -108,15 +120,23 @@ export default function ReportView({
 
   const renderMemoWithoutAuto = (memo?: string | null) => {
     if (!memo) return null;
-    const cleanedMemo = memo.replace(/\[自動\]|自動/g, "").trim();
-    if (!cleanedMemo) return null;
+    const cleanedMemo = memo.replace(/\[自動\]|\[ワンタップ\]|自動/g, "").trim();
+    const automatic = isAutomaticRecord(memo);
+    if (!cleanedMemo && !automatic) return null;
 
     return (
       <div className="text-gray-500 text-[10px] mt-0.5">
+        {automatic && <span title="自動入力" aria-label="自動入力">{getRecordIcon(memo)} </span>}
         {cleanedMemo}
       </div>
     );
   };
+
+  const isAutomaticRecord = (memo?: string | null) =>
+    Boolean(memo && (memo.includes("[自動]") || memo.includes("[ワンタップ]") || memo.includes("自動")));
+
+  const getRecordIcon = (memo?: string | null) =>
+    memo?.includes("[ワンタップ]") ? "👆" : "🤖";
 
   // サーバーサイドおよびマウント前はプレースホルダーを返し、ハイドレーションエラーを完全に防ぐ
   if (!mounted) {
@@ -159,93 +179,78 @@ export default function ReportView({
           <div className="text-2xl font-black text-emerald-700 mt-1">¥{totalExpense.toLocaleString()}</div>
         </div>
 
-        {/* 2カラムレイアウト（カテゴリ別 / 支払い別 を左右に配置） */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-          
-          {/* カテゴリ別 円グラフ ＋ 下部リスト */}
-          <div className="bg-gray-50 p-4 rounded-2xl border flex flex-col justify-start">
-            <div className="text-xs font-bold text-gray-700 mb-3">🏷️ カテゴリ別内訳</div>
-            {Object.keys(categoryTotals).length > 0 && doughnutData ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-[140px] h-[140px] flex items-center justify-center">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 items-start">
+          <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border">
+            <div>
+              <div className="text-xs font-bold text-gray-700 mb-3">🏷️ カテゴリ別グラフ</div>
+              {Object.keys(categoryTotals).length > 0 && doughnutData ? (
+                <div className="w-[160px] h-[160px] mx-auto">
                   <Doughnut
                     data={doughnutData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: { legend: { display: false } },
-                    }}
+                    options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
                   />
                 </div>
-                <div className="w-full space-y-1.5">
-                  {Object.entries(categoryTotals).map(([cat, val], idx) => {
-                    const percentage = totalExpense > 0 ? Math.round((val / totalExpense) * 100) : 0;
-                    const color = doughnutData.datasets[0].backgroundColor?.[idx] || "#cbd5e1";
-                    return (
-                      <div key={cat} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
-                        <div className="flex items-center gap-1.5 truncate pr-1">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: typeof color === 'string' ? color : '#cbd5e1' }}
-                          ></span>
-                          <span className="text-gray-600 truncate">{cat}</span>
-                        </div>
-                        <div className="text-right whitespace-nowrap">
-                          <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
-                          <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
-                        </div>
+              ) : <div className="text-xs text-gray-400 py-6 text-center">データなし</div>}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-700 mb-3">🏷️ カテゴリ別詳細</div>
+              <div className="space-y-1.5">
+                {Object.entries(categoryTotals).map(([cat, val], idx) => {
+                  const percentage = totalExpense > 0 ? Math.round((val / totalExpense) * 100) : 0;
+                  const color = doughnutData?.datasets[0].backgroundColor?.[idx] || "#cbd5e1";
+                  return (
+                    <div key={cat} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
+                      <div className="flex items-center gap-1.5 truncate pr-1">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: typeof color === "string" ? color : "#cbd5e1" }} />
+                        <span className="text-gray-600 truncate">{cat}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-right whitespace-nowrap">
+                        <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
+                        <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {Object.keys(categoryTotals).length === 0 && <div className="text-xs text-gray-400 py-6 text-center">データなし</div>}
               </div>
-            ) : (
-              <div className="text-xs text-gray-400 py-6 text-center">データなし</div>
-            )}
+            </div>
           </div>
 
-          {/* 支払い別 円グラフ ＋ 下部リスト */}
-          <div className="bg-gray-50 p-4 rounded-2xl border flex flex-col justify-start">
-            <div className="text-xs font-bold text-gray-700 mb-3">💳 支払い別内訳</div>
-            {Object.keys(paymentTotals).length > 0 ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-[140px] h-[140px] flex items-center justify-center">
+          <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border">
+            <div>
+              <div className="text-xs font-bold text-gray-700 mb-3">💳 支払い別グラフ</div>
+              {Object.keys(paymentTotals).length > 0 ? (
+                <div className="w-[160px] h-[160px] mx-auto">
                   <Doughnut
                     data={paymentDoughnutData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: { legend: { display: false } },
-                    }}
+                    options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
                   />
                 </div>
-                <div className="w-full space-y-1.5">
-                  {Object.entries(paymentTotals).map(([pm, val], idx) => {
-                    const percentage = totalPayment > 0 ? Math.round((val / totalPayment) * 100) : 0;
-                    const color = paymentColors[idx % paymentColors.length];
-                    return (
-                      <div key={pm} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
-                        <div className="flex items-center gap-1.5 truncate pr-1">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: color }}
-                          ></span>
-                          <span className="text-gray-600 truncate">{pm}</span>
-                        </div>
-                        <div className="text-right whitespace-nowrap">
-                          <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
-                          <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
-                        </div>
+              ) : <div className="text-xs text-gray-400 py-6 text-center">データなし</div>}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-700 mb-3">💳 支払い別詳細</div>
+              <div className="space-y-1.5">
+                {Object.entries(paymentTotals).map(([pm, val], idx) => {
+                  const percentage = totalPayment > 0 ? Math.round((val / totalPayment) * 100) : 0;
+                  const color = paymentColors[idx % paymentColors.length];
+                  return (
+                    <div key={pm} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
+                      <div className="flex items-center gap-1.5 truncate pr-1">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-gray-600 truncate">{pm}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-right whitespace-nowrap">
+                        <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
+                        <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {Object.keys(paymentTotals).length === 0 && <div className="text-xs text-gray-400 py-6 text-center">データなし</div>}
               </div>
-            ) : (
-              <div className="text-xs text-gray-400 py-6 text-center">データなし</div>
-            )}
+            </div>
           </div>
-
         </div>
       </div>
 
@@ -285,8 +290,15 @@ export default function ReportView({
         <div className="border rounded-2xl p-2 bg-gray-50 flex justify-center">
           <Calendar
             value={targetDate}
+            locale="ja-JP"
+            activeStartDate={new Date(targetYear, targetMonth - 1, 1)}
             onChange={(val) => {
               if (val instanceof Date) setTargetDate(val);
+            }}
+            onActiveStartDateChange={({ activeStartDate }) => {
+              if (activeStartDate instanceof Date) {
+                setTargetDate(new Date(activeStartDate.getFullYear(), activeStartDate.getMonth(), 1));
+              }
             }}
             onClickDay={handleDayClick}
             tileContent={({ date }) => {
@@ -307,7 +319,39 @@ export default function ReportView({
       </div>
 
       <div className="space-y-2 pt-2">
-        <div className="text-xs font-bold text-gray-700">📜 {targetMonth}月 履歴 ({filteredRecords.length}件)</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-bold text-gray-700">📜 {targetMonth}月 履歴 ({filteredRecords.length}件)</div>
+          {duplicateGroups.length > 0 && (
+            <span className="text-[10px] font-bold text-amber-600">
+              重複 {duplicateGroups.reduce((count, group) => count + group.length - 1, 0)}件
+            </span>
+          )}
+        </div>
+        {duplicateGroups.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 space-y-2">
+            <p className="text-[10px] text-amber-800">同じ月に同じ内容の記録があります。1件を残して削除できます。</p>
+            {duplicateGroups.map((group) => {
+              const duplicateIds = group.slice(1).map((record) => record.id);
+              const first = group[0];
+              return (
+                <div key={JSON.stringify([first.amount, first.category, first.payment_method, first.memo || ""])} className="flex items-center justify-between gap-2 text-[10px]">
+                  <span className="min-w-0 truncate">{first.category} / ¥{Number(first.amount).toLocaleString()} / {group.length}件</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`この重複記録を${duplicateIds.length}件削除しますか？1件は残ります。`)) {
+                        deleteRecords(duplicateIds);
+                      }
+                    }}
+                    className="shrink-0 text-red-500 font-bold"
+                  >
+                    重複を削除
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {filteredRecords.length > 0 ? (
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {filteredRecords.map((r) => (

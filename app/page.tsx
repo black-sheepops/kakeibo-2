@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import 'react-calendar/dist/Calendar.css';
@@ -8,6 +9,7 @@ import 'react-calendar/dist/Calendar.css';
 import QuickInputForm from "@/components/QuickInputForm";
 import SettingManager from "@/components/SettingManager";
 import ReportView from "@/components/ReportView";
+import AuthPanel from "@/components/AuthPanel";
 import { AutoButton, AutoSchedule, RecordItem } from "@/types/kakeibo";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -92,6 +94,7 @@ export default function Home() {
   const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
   const [targetDate, setTargetDate] = useState(new Date()); // カレンダー用の現在選択日
   const [isSettingMode, setIsSettingMode] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const autoInputRunning = useRef(false);
   
   // データ群
@@ -294,6 +297,11 @@ export default function Home() {
 
   useEffect(() => {
     setIsMounted(true);
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -642,9 +650,16 @@ export default function Home() {
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
         <header className="relative flex justify-end items-center py-2 min-h-10">
           <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
-          <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
-            {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
-          </button>
+          <div className="flex items-center gap-2">
+            <AuthPanel
+              email={session?.user.email || null}
+              onSignedIn={() => setIsSettingMode(false)}
+              onSignedOut={() => setSession(null)}
+            />
+            <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
+              {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
+            </button>
+          </div>
         </header>
 
         {isSettingMode ? (

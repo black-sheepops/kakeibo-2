@@ -95,6 +95,7 @@ export default function Home() {
   const [targetDate, setTargetDate] = useState(new Date()); // カレンダー用の現在選択日
   const [isSettingMode, setIsSettingMode] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const autoInputRunning = useRef(false);
   
   // データ群
@@ -303,6 +304,25 @@ export default function Home() {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setIsAdmin(false);
+      return;
+    }
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          setIsAdmin(false);
+          return;
+        }
+        setIsAdmin(data?.role === "admin");
+      });
+  }, [session]);
 
   useEffect(() => {
     if (isMounted && session) {
@@ -670,6 +690,7 @@ export default function Home() {
               onSignedIn={() => setIsSettingMode(false)}
               onSignedOut={() => setSession(null)}
             />
+            {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
             <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
               {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
             </button>

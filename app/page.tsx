@@ -645,6 +645,20 @@ export default function Home() {
     );
   }
 
+  if (!session) {
+    return (
+      <main className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg text-center">
+          <h1 className="text-xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
+          <p className="mt-3 text-xs text-gray-600">利用するにはログインしてください。</p>
+          <div className="mt-4 flex justify-center">
+            <AuthPanel email={null} onSignedIn={() => undefined} onSignedOut={() => undefined} />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">

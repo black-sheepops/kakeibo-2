@@ -179,7 +179,7 @@ export default function ReportView({
           <div className="text-2xl font-black text-emerald-700 mt-1">¥{totalExpense.toLocaleString()}</div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 items-start">
           <div className="min-w-0 space-y-4 bg-gray-50 p-4 rounded-2xl border overflow-hidden">
             <div>
               <div className="text-xs font-bold text-gray-700 mb-3">🏷️ カテゴリ別グラフ</div>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AutoButton, AutoSchedule } from "@/types/kakeibo";
+import type { ManagedUser, UserAuditLog } from "@/types/kakeibo";
 
 type Props = {
   autoButtons: AutoButton[];
@@ -68,6 +69,16 @@ type Props = {
   handleAddCreditCardProvider: (event: React.FormEvent) => void;
   handleDeleteCreditCardProvider: (name: string) => void;
   handleMoveCreditCardProvider: (name: string, direction: "up" | "down") => void;
+  accountEmail: string;
+  isAdmin: boolean;
+  handleEmailChange: (email: string) => Promise<void>;
+  handlePasswordChange: (password: string) => Promise<void>;
+  handleSignOut: () => Promise<void>;
+  handleAccountDelete: () => Promise<void>;
+  loadManagedUsers: () => Promise<ManagedUser[]>;
+  updateManagedUser: (userId: string, role: "user" | "admin", disabled: boolean) => Promise<boolean>;
+  loadAuditLogs: () => Promise<UserAuditLog[]>;
+  deleteManagedUser: (userId: string) => Promise<boolean>;
 };
 
 export default function SettingManager({
@@ -79,18 +90,74 @@ export default function SettingManager({
   creditCardProviders,
   weekDays,
   btnLabel, setBtnLabel, btnAmount, setBtnAmount, btnCategory, setBtnCategory, btnMemo, setBtnMemo, btnPayment, setBtnPayment, editingBtnId, handleButtonSubmit, startEditButton, cancelEditButton, handleDeleteButton,
-  schLabel, setSchLabel, schAmount, setSchAmount, schCategory, setSchCategory, schMemo, setSchMemo, schPayment, setSchPayment, schInterval, setSchInterval, schDay, setSchDay, editingScheduleId, handleScheduleSubmit, startEditSchedule, cancelEditSchedule, handleDeleteSchedule, newCategory, setNewCategory, handleAddCategory, handleDeleteCategory, handleMoveCategory, newPaymentMethod, setNewPaymentMethod, handleAddPaymentMethod, handleDeletePaymentMethod, handleMovePaymentMethod, newQrPaymentProvider, setNewQrPaymentProvider, handleAddQrPaymentProvider, handleDeleteQrPaymentProvider, handleMoveQrPaymentProvider, newCreditCardProvider, setNewCreditCardProvider, handleAddCreditCardProvider, handleDeleteCreditCardProvider, handleMoveCreditCardProvider, handleMoveButton
+  schLabel, setSchLabel, schAmount, setSchAmount, schCategory, setSchCategory, schMemo, setSchMemo, schPayment, setSchPayment, schInterval, setSchInterval, schDay, setSchDay, editingScheduleId, handleScheduleSubmit, startEditSchedule, cancelEditSchedule, handleDeleteSchedule, newCategory, setNewCategory, handleAddCategory, handleDeleteCategory, handleMoveCategory, newPaymentMethod, setNewPaymentMethod, handleAddPaymentMethod, handleDeletePaymentMethod, handleMovePaymentMethod, newQrPaymentProvider, setNewQrPaymentProvider, handleAddQrPaymentProvider, handleDeleteQrPaymentProvider, handleMoveQrPaymentProvider, newCreditCardProvider, setNewCreditCardProvider, handleAddCreditCardProvider, handleDeleteCreditCardProvider, handleMoveCreditCardProvider, handleMoveButton, accountEmail, isAdmin, handleEmailChange, handlePasswordChange, handleSignOut, handleAccountDelete, loadManagedUsers, updateManagedUser, loadAuditLogs, deleteManagedUser
 }: Props) {
-  const [activeTab, setActiveTab] = React.useState<"basic" | "quick" | "schedule">("basic");
+  const [activeTab, setActiveTab] = React.useState<"basic" | "quick" | "schedule" | "account">("basic");
   const [basicTab, setBasicTab] = React.useState<"category" | "payment" | "credit" | "qr">("category");
+  const [newEmail, setNewEmail] = React.useState(accountEmail);
+  const [newPassword, setNewPassword] = React.useState("");
+  const [isAccountDeletionConfirmed, setIsAccountDeletionConfirmed] = React.useState(false);
+  const [managedUsers, setManagedUsers] = React.useState<ManagedUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = React.useState(false);
+  const [auditLogs, setAuditLogs] = React.useState<UserAuditLog[]>([]);
+  const [isLoadingAuditLogs, setIsLoadingAuditLogs] = React.useState(false);
+  const [accountMessage, setAccountMessage] = React.useState("");
+
+  React.useEffect(() => {
+    setNewEmail(accountEmail);
+  }, [accountEmail]);
+
+  const submitEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newEmail.trim() || newEmail.trim() === accountEmail) return;
+    await handleEmailChange(newEmail.trim());
+  };
+
+  const submitPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (newPassword.length < 6) return;
+    await handlePasswordChange(newPassword);
+    setNewPassword("");
+  };
+
+  React.useEffect(() => {
+    if (!isAdmin || activeTab !== "account") return;
+    setIsLoadingUsers(true);
+    loadManagedUsers()
+      .then(setManagedUsers)
+      .finally(() => setIsLoadingUsers(false));
+    setIsLoadingAuditLogs(true);
+    loadAuditLogs()
+      .then(setAuditLogs)
+      .finally(() => setIsLoadingAuditLogs(false));
+  }, [activeTab, isAdmin, loadManagedUsers, loadAuditLogs]);
+
+  const handleManagedUserUpdate = async (user: ManagedUser, role: "user" | "admin", disabled: boolean) => {
+    if (!confirm(`${user.email || "このユーザー"}の設定を変更しますか？`)) return;
+    if (await updateManagedUser(user.user_id, role, disabled)) {
+      setManagedUsers((current) => current.map((item) => item.user_id === user.user_id ? { ...item, role, disabled } : item));
+      setAccountMessage("ユーザー設定を更新しました。");
+      setAuditLogs(await loadAuditLogs());
+    }
+  };
+
+  const handleManagedUserDelete = async (user: ManagedUser) => {
+    if (!confirm(`${user.email || "このユーザー"}を削除しますか？入力データもすべて削除され、元に戻せません。`)) return;
+    if (await deleteManagedUser(user.user_id)) {
+      setManagedUsers((current) => current.filter((item) => item.user_id !== user.user_id));
+      setAuditLogs(await loadAuditLogs());
+      setAccountMessage("ユーザーと関連データを削除しました。");
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 flex-1">
-      <div className="grid grid-cols-3 gap-2 bg-gray-100 p-1.5 rounded-2xl">
+      <div className="grid grid-cols-4 gap-2 bg-gray-100 p-1.5 rounded-2xl">
         {[
           { id: "basic" as const, label: "🏷️ 基本設定" },
           { id: "quick" as const, label: "🎯 ワンタップ" },
           { id: "schedule" as const, label: "🔄 定期ルール" },
+          { id: "account" as const, label: "👤 ログイン情報" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -152,6 +219,7 @@ export default function SettingManager({
               <button type="submit" className="px-3 text-xs bg-emerald-600 text-white rounded-xl">追加</button>
             </form>
           </div>}
+
           {basicTab === "payment" && <div className="bg-gray-50/70 p-3 rounded-2xl border border-gray-100">
             <p className="text-xs font-bold text-gray-600 mb-2">💰 支払い方法</p>
             <div className="space-y-2">
@@ -211,6 +279,88 @@ export default function SettingManager({
               <button type="submit" className="px-3 text-xs bg-emerald-600 text-white rounded-xl">追加</button>
             </form>
           </div>}
+      </div>}
+      {activeTab === "account" && <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
+        <div>
+          <h2 className="text-sm font-bold text-gray-700">👤 ログイン情報</h2>
+          <p className="text-[10px] text-gray-400 mt-1">アカウント情報と認証設定を変更できます</p>
+        </div>
+        {accountMessage && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">{accountMessage}</p>}
+        <button type="button" onClick={handleSignOut} className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-bold text-red-600">ログアウト</button>
+        <div className="rounded-2xl bg-gray-50 p-3 text-xs">
+          <span className="text-gray-500">権限の種類</span>
+          <p className="mt-1 font-bold text-emerald-700">{isAdmin ? "管理者" : "一般ユーザー"}</p>
+        </div>
+        <form onSubmit={submitEmail} className="rounded-2xl border border-gray-100 p-3">
+          <label className="text-xs font-bold text-gray-600">ログイン名（メールアドレス）</label>
+          <input type="email" required value={newEmail} onChange={(event) => setNewEmail(event.target.value)} className="mt-2 w-full rounded-xl border p-2.5 text-xs" />
+          <button type="submit" disabled={!newEmail.trim() || newEmail.trim() === accountEmail} className="mt-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">ログイン名を変更</button>
+          <p className="mt-2 text-[10px] text-gray-400">変更後に確認メールが届く場合があります。</p>
+        </form>
+        <form onSubmit={submitPassword} className="rounded-2xl border border-gray-100 p-3">
+          <label className="text-xs font-bold text-gray-600">パスワード変更</label>
+          <input type="password" required minLength={6} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="新しいパスワード（6文字以上）" className="mt-2 w-full rounded-xl border p-2.5 text-xs" />
+          <button type="submit" disabled={newPassword.length < 6} className="mt-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">パスワードを変更</button>
+        </form>
+        <div className="rounded-2xl border border-red-100 bg-red-50/50 p-3">
+          <p className="text-[10px] text-red-700">アカウントを削除すると、入力した履歴・設定もすべて削除され、元に戻せません。</p>
+          <label className="mt-3 flex items-start gap-2 text-[10px] text-red-700">
+            <input
+              type="checkbox"
+              checked={isAccountDeletionConfirmed}
+              onChange={(event) => setIsAccountDeletionConfirmed(event.target.checked)}
+              className="mt-0.5 accent-red-600"
+            />
+            <span>削除すると元に戻せないことを確認しました</span>
+          </label>
+          <button
+            type="button"
+            onClick={handleAccountDelete}
+            disabled={!isAccountDeletionConfirmed}
+            className="mt-2 rounded-xl border border-red-300 bg-white px-3 py-2 text-xs font-bold text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            アカウントを削除
+          </button>
+        </div>
+        {isAdmin && <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+          <h3 className="text-xs font-bold text-amber-800">管理者用ユーザー管理</h3>
+          {isLoadingUsers ? <p className="mt-2 text-[10px] text-gray-500">読み込み中...</p> : (
+            <div className="mt-2 space-y-2">
+              {managedUsers.map((user) => (
+                <div key={user.user_id} className="rounded-xl bg-white p-2 text-[10px]">
+                  <p className="truncate font-bold text-gray-700">{user.email || "メールアドレスなし"}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-1">
+                    <select value={user.role} onChange={(event) => handleManagedUserUpdate(user, event.target.value as "user" | "admin", user.disabled)} className="rounded-lg border p-1">
+                      <option value="user">一般ユーザー</option>
+                      <option value="admin">管理者</option>
+                    </select>
+                    <button type="button" onClick={() => handleManagedUserUpdate(user, user.role, !user.disabled)} className="rounded-lg border border-gray-200 p-1">
+                      {user.disabled ? "利用停止中（解除）" : "利用停止"}
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => handleManagedUserDelete(user)} className="mt-1 w-full rounded-lg border border-red-200 p-1 text-red-600">
+                    ユーザーとデータを削除
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>}
+        {isAdmin && <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+          <h3 className="text-xs font-bold text-gray-700">操作履歴</h3>
+          {isLoadingAuditLogs ? <p className="mt-2 text-[10px] text-gray-500">読み込み中...</p> : auditLogs.length === 0 ? (
+            <p className="mt-2 text-[10px] text-gray-400">記録された操作はありません</p>
+          ) : (
+            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
+              {auditLogs.map((log) => (
+                <div key={log.id} className="rounded-lg bg-white px-2 py-1.5 text-[10px]">
+                  <span className="font-bold text-gray-700">{log.action}</span>
+                  <span className="ml-2 text-gray-400">{new Date(log.created_at).toLocaleString("ja-JP")}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>}
       </div>}
       {/* ワンタップボタン設定カード */}
       {activeTab === "quick" && <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">

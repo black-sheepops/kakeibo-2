@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import 'react-calendar/dist/Calendar.css';
@@ -8,7 +9,8 @@ import 'react-calendar/dist/Calendar.css';
 import QuickInputForm from "@/components/QuickInputForm";
 import SettingManager from "@/components/SettingManager";
 import ReportView from "@/components/ReportView";
-import { AutoButton, AutoSchedule, RecordItem } from "@/types/kakeibo";
+import AuthPanel from "@/components/AuthPanel";
+import { AutoButton, AutoSchedule, RecordItem, ManagedUser, UserAuditLog } from "@/types/kakeibo";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -92,13 +94,18 @@ export default function Home() {
   const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
   const [targetDate, setTargetDate] = useState(new Date()); // カレンダー用の現在選択日
   const [isSettingMode, setIsSettingMode] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isTitleVisible, setIsTitleVisible] = useState(true);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const autoInputRunning = useRef(false);
   
   // データ群
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [schedules, setSchedules] = useState<AutoSchedule[]>([]);
   const [autoButtons, setAutoButtons] = useState<AutoButton[]>([]);
-  const [quickCategories, setQuickCategories] = useState(["食費", "外食", "日用品", "バドミントン", "自動車", "交通費", "固定費", "その他"]);
+  const [quickCategories, setQuickCategories] = useState(["食費", "外食", "日用品", "交通費", "固定費", "その他"]);
   const [paymentMethods, setPaymentMethods] = useState(["現金", "クレジットカード", "QR決済", "その他"]);
   const [qrPaymentProviders, setQrPaymentProviders] = useState(["PayPay", "楽天ペイ", "d払い", "au PAY", "メルペイ", "その他"]);
   const [creditCardProviders, setCreditCardProviders] = useState(["楽天カード", "三井住友カード", "PayPayカード", "その他"]);
@@ -146,6 +153,7 @@ export default function Home() {
 
   // 自動入力チェックロジック
   const checkAndTriggerAutoInput = async (currentSchedules: AutoSchedule[]) => {
+    if (!session) return;
     if (autoInputRunning.current) return;
     autoInputRunning.current = true;
     const today = new Date();
@@ -164,6 +172,7 @@ export default function Home() {
     const { data: monthRecords, error: monthRecordsError } = await supabase
       .from("kakeibo")
       .select("amount, category, payment_method, memo")
+      .eq("user_id", session.user.id)
       .gte("date", monthStart)
       .lte("date", monthEnd);
     if (monthRecordsError) {
@@ -253,6 +262,7 @@ export default function Home() {
 
   // データ取得ロジック
   const fetchData = useCallback(async (dateArg?: Date) => {
+    if (!session) return;
     const year = dateArg ? dateArg.getFullYear() : targetYear;
     const month = dateArg ? dateArg.getMonth() + 1 : targetMonth;
     const sixMonthsAgoDate = new Date(year, month - 1 - 5, 1);
@@ -263,6 +273,7 @@ export default function Home() {
     const { data: recData } = await supabase
       .from("kakeibo")
       .select("*")
+      .eq("user_id", session.user.id)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: false })
@@ -270,38 +281,81 @@ export default function Home() {
 
     if (recData) setRecords(recData);
 
-    const { data: schData } = await supabase.from("auto_schedules").select("*").order("id", { ascending: true });
+    const { data: schData } = await supabase.from("auto_schedules").select("*").eq("user_id", session.user.id).order("id", { ascending: true });
     if (schData) {
       setSchedules(schData);
       await checkAndTriggerAutoInput(schData);
     }
 
-    const { data: btnData } = await supabase.from("auto_buttons").select("*").order("sort_order", { ascending: true });
+    const { data: btnData } = await supabase.from("auto_buttons").select("*").eq("user_id", session.user.id).order("sort_order", { ascending: true });
     if (btnData) setAutoButtons(btnData);
 
-    const { data: categoryData } = await supabase.from("categories").select("name").order("sort_order", { ascending: true });
+    const { data: categoryData } = await supabase.from("categories").select("name").eq("user_id", session.user.id).order("sort_order", { ascending: true });
     if (categoryData?.length) setQuickCategories(categoryData.map((item) => item.name));
 
-    const { data: paymentData } = await supabase.from("payment_methods").select("name").order("sort_order", { ascending: true });
+    const { data: paymentData } = await supabase.from("payment_methods").select("name").eq("user_id", session.user.id).order("sort_order", { ascending: true });
     if (paymentData?.length) setPaymentMethods(paymentData.map((item) => item.name));
 
-    const { data: providerData } = await supabase.from("qr_payment_providers").select("name").order("sort_order", { ascending: true });
+    const { data: providerData } = await supabase.from("qr_payment_providers").select("name").eq("user_id", session.user.id).order("sort_order", { ascending: true });
     if (providerData?.length) setQrPaymentProviders(providerData.map((item) => item.name));
 
-    const { data: cardData } = await supabase.from("credit_card_providers").select("name").order("sort_order", { ascending: true });
+    const { data: cardData } = await supabase.from("credit_card_providers").select("name").eq("user_id", session.user.id).order("sort_order", { ascending: true });
     if (cardData?.length) setCreditCardProviders(cardData.map((item) => item.name));
-  }, [targetYear, targetMonth]);
+  }, [targetYear, targetMonth, session]);
 
   useEffect(() => {
     setIsMounted(true);
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") setIsPasswordRecovery(true);
+      setSession(nextSession);
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
+    if (!session) {
+      setIsAdmin(false);
+      return;
+    }
+
+    supabase
+      .from("user_roles")
+      .select("role, disabled")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(async ({ data, error }) => {
+        if (error) {
+          setIsAdmin(false);
+          return;
+        }
+        if (data?.disabled) {
+          await supabase.auth.signOut();
+          setSession(null);
+          alert("このアカウントは利用停止中です。");
+          return;
+        }
+        setIsAdmin(data?.role === "admin");
+      });
+  }, [session]);
+
+  useEffect(() => {
+    const title = titleRef.current;
+    if (!title) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsTitleVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(title);
+    return () => observer.disconnect();
+  }, [session]);
+
+  useEffect(() => {
+    if (isMounted && session) {
       const dateObj = new Date(targetYear, targetMonth - 1);
       fetchData(dateObj);
     }
-  }, [targetYear, targetMonth, fetchData, isMounted]);
+  }, [targetYear, targetMonth, fetchData, isMounted, session]);
 
   // アクション系
   const handleSubmit = async (e: React.FormEvent) => {
@@ -423,6 +477,95 @@ export default function Home() {
     if (!confirm("この自動入力スケジュールを削除しますか？")) return;
     await supabase.from("auto_schedules").delete().eq("id", id);
     await fetchData();
+  };
+
+  const handleEmailChange = async (email: string) => {
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) {
+      alert(`ログイン名の変更に失敗しました: ${error.message}`);
+      return;
+    }
+    alert("ログイン名を変更しました。確認メールが届いた場合は、メール内のリンクを開いてください。");
+  };
+
+  const handlePasswordChange = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      alert(`パスワードの変更に失敗しました: ${error.message}`);
+      return;
+    }
+    alert("パスワードを変更しました。");
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert(`ログアウトに失敗しました: ${error.message}`);
+      return;
+    }
+    setSession(null);
+  };
+
+  const handleAccountDelete = async () => {
+    if (!confirm("アカウントと入力データをすべて削除します。この操作は元に戻せません。続行しますか？")) return;
+    const { error } = await supabase.rpc("delete_my_account");
+    if (error) {
+      alert(`アカウントの削除に失敗しました: ${error.message}`);
+      return;
+    }
+    await supabase.auth.signOut();
+    setSession(null);
+    alert("アカウントと入力データを削除しました。");
+  };
+
+  const loadManagedUsers = useCallback(async () => {
+    const { data, error } = await supabase.rpc("admin_list_users");
+    if (error) {
+      alert(`ユーザー一覧の取得に失敗しました: ${error.message}`);
+      return [];
+    }
+    return (data || []) as ManagedUser[];
+  }, []);
+
+  const loadAuditLogs = useCallback(async () => {
+    const { data, error } = await supabase.rpc("admin_list_audit_logs");
+    if (error) {
+      alert(`操作履歴の取得に失敗しました: ${error.message}`);
+      return [];
+    }
+    return (data || []) as UserAuditLog[];
+  }, []);
+
+  const updateManagedUser = useCallback(async (userId: string, role: "user" | "admin", disabled: boolean) => {
+    const { error } = await supabase.rpc("admin_update_user", {
+      target_user_id: userId,
+      new_role: role,
+      new_disabled: disabled,
+    });
+    if (error) {
+      alert(`ユーザー情報の更新に失敗しました: ${error.message}`);
+      return false;
+    }
+    return true;
+  }, []);
+
+  const deleteManagedUser = useCallback(async (userId: string) => {
+    const { error } = await supabase.rpc("admin_delete_user", { target_user_id: userId });
+    if (error) {
+      alert(`ユーザー削除に失敗しました: ${error.message}`);
+      return false;
+    }
+    return true;
+  }, []);
+
+  const handleSignedIn = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      alert(`ログイン状態の取得に失敗しました: ${error.message}`);
+      return;
+    }
+    setSession(data.session);
+    setIsSettingMode(false);
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -637,14 +780,47 @@ export default function Home() {
     );
   }
 
+  if (!session) {
+    return (
+      <main className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg text-center">
+          <h1 className="text-xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
+          <p className="mt-3 text-xs text-gray-600">利用するにはログインしてください。</p>
+          <div className="mt-4 flex justify-center">
+            <AuthPanel email={null} onSignedIn={handleSignedIn} onSignedOut={() => setSession(null)} />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <main className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
+        <AuthPanel
+          email={null}
+          resetMode
+          onSignedIn={() => undefined}
+          onSignedOut={() => setSession(null)}
+          onPasswordReset={() => setIsPasswordRecovery(false)}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center px-4 pt-1 pb-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-3 h-full flex-1">
-        <header className="relative flex justify-end items-center py-0 min-h-8">
-          <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
-          <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
-            {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
-          </button>
+        <header className="relative min-h-8 py-0">
+          <div
+            className={`fixed inset-x-4 top-1 z-30 mx-auto flex w-[calc(100%-2rem)] max-w-md justify-end transition-opacity duration-200 ${isTitleVisible ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            aria-hidden={!isTitleVisible}
+          >
+            <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
+              {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
+            </button>
+          </div>
+          <h1 ref={titleRef} className="text-center text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
         </header>
 
         {isSettingMode ? (
@@ -721,6 +897,16 @@ export default function Home() {
                     handleAddCreditCardProvider={handleAddCreditCardProvider}
                     handleDeleteCreditCardProvider={handleDeleteCreditCardProvider}
                     handleMoveCreditCardProvider={handleMoveCreditCardProvider}
+                    accountEmail={session.user.email || ""}
+                    isAdmin={isAdmin}
+                    handleEmailChange={handleEmailChange}
+                    handlePasswordChange={handlePasswordChange}
+                    handleSignOut={handleSignOut}
+                    handleAccountDelete={handleAccountDelete}
+                    loadManagedUsers={loadManagedUsers}
+                    updateManagedUser={updateManagedUser}
+                    loadAuditLogs={loadAuditLogs}
+                    deleteManagedUser={deleteManagedUser}
           />
         ) : (
           <div className="flex flex-col gap-6 flex-1 w-full">

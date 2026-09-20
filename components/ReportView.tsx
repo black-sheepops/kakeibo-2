@@ -24,6 +24,7 @@ interface ReportViewProps {
   allRecords: RecordItem[];
   startEdit: (r: RecordItem) => void;
   deleteRecord: (id: number) => void;
+  deleteRecords: (ids: number[]) => void;
 }
 
 export default function ReportView({
@@ -41,6 +42,7 @@ export default function ReportView({
   allRecords,
   startEdit,
   deleteRecord,
+  deleteRecords,
 }: ReportViewProps) {
   const [mounted, setMounted] = useState(false);
   const [selectedDayRecords, setSelectedDayRecords] = useState<RecordItem[] | null>(null);
@@ -79,6 +81,16 @@ export default function ReportView({
 
   const totalExpense = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
   const totalPayment = Object.values(paymentTotals).reduce((a, b) => a + b, 0);
+
+  const duplicateGroups = Array.from(
+    filteredRecords.filter((record) => record.memo?.includes("[自動]")).reduce((groups, record) => {
+      const key = JSON.stringify([record.amount, record.category, record.payment_method, record.memo || ""]);
+      const group = groups.get(key) || [];
+      group.push(record);
+      groups.set(key, group);
+      return groups;
+    }, new Map<string, RecordItem[]>())
+  ).map(([, group]) => group).filter((group) => group.length > 1);
 
   const barLabels = (barData?.labels as string[]) || [];
   const barValues = (barData?.datasets?.[0]?.data as number[]) || [0, 0, 0, 0, 0, 0];
@@ -307,7 +319,39 @@ export default function ReportView({
       </div>
 
       <div className="space-y-2 pt-2">
-        <div className="text-xs font-bold text-gray-700">📜 {targetMonth}月 履歴 ({filteredRecords.length}件)</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-bold text-gray-700">📜 {targetMonth}月 履歴 ({filteredRecords.length}件)</div>
+          {duplicateGroups.length > 0 && (
+            <span className="text-[10px] font-bold text-amber-600">
+              重複 {duplicateGroups.reduce((count, group) => count + group.length - 1, 0)}件
+            </span>
+          )}
+        </div>
+        {duplicateGroups.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 space-y-2">
+            <p className="text-[10px] text-amber-800">同じ月に同じ内容の記録があります。1件を残して削除できます。</p>
+            {duplicateGroups.map((group) => {
+              const duplicateIds = group.slice(1).map((record) => record.id);
+              const first = group[0];
+              return (
+                <div key={JSON.stringify([first.amount, first.category, first.payment_method, first.memo || ""])} className="flex items-center justify-between gap-2 text-[10px]">
+                  <span className="min-w-0 truncate">{first.category} / ¥{Number(first.amount).toLocaleString()} / {group.length}件</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`この重複記録を${duplicateIds.length}件削除しますか？1件は残ります。`)) {
+                        deleteRecords(duplicateIds);
+                      }
+                    }}
+                    className="shrink-0 text-red-500 font-bold"
+                  >
+                    重複を削除
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {filteredRecords.length > 0 ? (
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {filteredRecords.map((r) => (

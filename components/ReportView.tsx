@@ -199,15 +199,13 @@ export default function ReportView({
                   const percentage = totalExpense > 0 ? Math.round((val / totalExpense) * 100) : 0;
                   const color = doughnutData?.datasets[0].backgroundColor?.[idx] || "#cbd5e1";
                   return (
-                    <div key={cat} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
+                    <div key={cat} className="grid grid-cols-[minmax(0,1fr)_4.25rem_2.5rem] items-center text-xs py-0.5 border-b border-gray-200 last:border-none">
                       <div className="flex items-center gap-1.5 truncate pr-1">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: typeof color === "string" ? color : "#cbd5e1" }} />
                         <span className="text-gray-600 truncate">{cat}</span>
                       </div>
-                      <div className="text-right whitespace-nowrap">
-                        <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
-                        <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
-                      </div>
+                      <span className="text-right whitespace-nowrap font-bold text-gray-800">¥{val.toLocaleString()}</span>
+                      <span className="text-right whitespace-nowrap text-[10px] text-gray-400 font-normal">({percentage}%)</span>
                     </div>
                   );
                 })}
@@ -235,15 +233,13 @@ export default function ReportView({
                   const percentage = totalPayment > 0 ? Math.round((val / totalPayment) * 100) : 0;
                   const color = paymentColors[idx % paymentColors.length];
                   return (
-                    <div key={pm} className="flex items-center justify-between text-xs py-0.5 border-b border-gray-200 last:border-none">
+                    <div key={pm} className="grid grid-cols-[minmax(0,1fr)_4.25rem_2.5rem] items-center text-xs py-0.5 border-b border-gray-200 last:border-none">
                       <div className="flex items-center gap-1.5 truncate pr-1">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                         <span className="text-gray-600 truncate">{pm}</span>
                       </div>
-                      <div className="text-right whitespace-nowrap">
-                        <span className="font-bold text-gray-800">¥{val.toLocaleString()}</span>
-                        <span className="text-[10px] text-gray-400 font-normal ml-1">({percentage}%)</span>
-                      </div>
+                      <span className="text-right whitespace-nowrap font-bold text-gray-800">¥{val.toLocaleString()}</span>
+                      <span className="text-right whitespace-nowrap text-[10px] text-gray-400 font-normal">({percentage}%)</span>
                     </div>
                   );
                 })}

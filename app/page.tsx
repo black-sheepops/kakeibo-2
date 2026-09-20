@@ -682,9 +682,9 @@ export default function Home() {
   return (
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
-        <header className="relative flex justify-end items-center py-2 min-h-10">
-          <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
-          <div className="flex items-center gap-2">
+        <header className="flex flex-col items-center gap-2 py-2">
+          <h1 className="text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
+          <div className="flex w-full items-center justify-end gap-2">
             <AuthPanel
               email={session?.user.email || null}
               onSignedIn={() => setIsSettingMode(false)}

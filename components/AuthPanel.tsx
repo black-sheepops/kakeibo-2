@@ -51,14 +51,17 @@ export default function AuthPanel({ email, onSignedIn, onSignedOut }: AuthPanelP
   return (
     <div className="relative">
       {email ? (
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="max-w-40 truncate text-[10px] font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600"
-          title="ログアウト"
-        >
-          {email} からログアウト
-        </button>
+        <div className="flex max-w-40 flex-col items-end gap-1">
+          <span className="max-w-full truncate text-[10px] font-bold text-gray-600" title={email}>{email}</span>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-gray-600 shadow-sm border border-gray-200"
+            title="ログアウト"
+          >
+            ログアウト
+          </button>
+        </div>
       ) : (
         <button
           type="button"

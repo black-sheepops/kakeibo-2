@@ -682,19 +682,21 @@ export default function Home() {
   return (
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
-        <header className="flex flex-col items-center gap-2 py-2">
-          <h1 className="text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
-          <div className="flex w-full items-center justify-end gap-2">
+        <header className="relative min-h-24 py-2">
+          <div className="absolute left-0 top-2 flex flex-col items-start gap-2">
+            {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
+            <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
+              {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
+            </button>
+          </div>
+          <div className="absolute right-0 top-2">
             <AuthPanel
               email={session?.user.email || null}
               onSignedIn={() => setIsSettingMode(false)}
               onSignedOut={() => setSession(null)}
             />
-            {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
-            <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
-              {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
-            </button>
           </div>
+          <h1 className="pt-16 text-center text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
         </header>
 
         {isSettingMode ? (

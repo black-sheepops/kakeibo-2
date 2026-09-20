@@ -51,7 +51,7 @@ export default function AuthPanel({ email, onSignedIn, onSignedOut }: AuthPanelP
   return (
     <div className="relative">
       {email ? (
-        <div className="flex max-w-40 flex-col items-end gap-1">
+        <div className="flex max-w-40 flex-col items-start gap-1">
           <span className="max-w-full truncate text-[10px] font-bold text-gray-600" title={email}>{email}</span>
           <button
             type="button"

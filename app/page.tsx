@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import 'react-calendar/dist/Calendar.css';
@@ -9,7 +8,6 @@ import 'react-calendar/dist/Calendar.css';
 import QuickInputForm from "@/components/QuickInputForm";
 import SettingManager from "@/components/SettingManager";
 import ReportView from "@/components/ReportView";
-import AuthPanel from "@/components/AuthPanel";
 import { AutoButton, AutoSchedule, RecordItem } from "@/types/kakeibo";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -94,10 +92,6 @@ export default function Home() {
   const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
   const [targetDate, setTargetDate] = useState(new Date()); // カレンダー用の現在選択日
   const [isSettingMode, setIsSettingMode] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isTitleVisible, setIsTitleVisible] = useState(true);
-  const titleRef = useRef<HTMLHeadingElement>(null);
   const autoInputRunning = useRef(false);
   
   // データ群
@@ -300,49 +294,14 @@ export default function Home() {
 
   useEffect(() => {
     setIsMounted(true);
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-    });
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      setIsAdmin(false);
-      return;
-    }
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          setIsAdmin(false);
-          return;
-        }
-        setIsAdmin(data?.role === "admin");
-      });
-  }, [session]);
-
-  useEffect(() => {
-    const title = titleRef.current;
-    if (!title) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsTitleVisible(entry.isIntersecting),
-      { threshold: 0.1 }
-    );
-    observer.observe(title);
-    return () => observer.disconnect();
-  }, [session]);
-
-  useEffect(() => {
-    if (isMounted && session) {
+    if (isMounted) {
       const dateObj = new Date(targetYear, targetMonth - 1);
       fetchData(dateObj);
     }
-  }, [targetYear, targetMonth, fetchData, isMounted, session]);
+  }, [targetYear, targetMonth, fetchData, isMounted]);
 
   // アクション系
   const handleSubmit = async (e: React.FormEvent) => {
@@ -672,47 +631,20 @@ export default function Home() {
 
   if (!isMounted) {
     return (
-      <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
+      <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center px-4 pt-1 pb-4 overflow-x-hidden">
         <p>読込中...</p>
       </main>
     );
   }
 
-  if (!session) {
-    return (
-      <main className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg text-center">
-          <h1 className="text-xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
-          <p className="mt-3 text-xs text-gray-600">利用するにはログインしてください。</p>
-          <div className="mt-4 flex justify-center">
-            <AuthPanel email={null} onSignedIn={() => undefined} onSignedOut={() => undefined} />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
-      <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
-        <header className="relative min-h-24 py-2">
-          <div
-            className={`fixed inset-x-4 top-2 z-30 mx-auto flex w-[calc(100%-2rem)] max-w-md items-start justify-between transition-opacity duration-200 ${isTitleVisible ? "opacity-100" : "pointer-events-none opacity-0"}`}
-            aria-hidden={!isTitleVisible}
-          >
-            <AuthPanel
-              email={session?.user.email || null}
-              onSignedIn={() => setIsSettingMode(false)}
-              onSignedOut={() => setSession(null)}
-            />
-            <div className="flex flex-col items-end gap-2">
-              {isAdmin && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">管理者</span>}
-              <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-3 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
-                {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
-              </button>
-            </div>
-          </div>
-          <h1 ref={titleRef} className="pt-16 text-center text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
+    <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center px-4 pt-1 pb-4 overflow-x-hidden">
+      <div className="w-full max-w-md flex flex-col gap-3 h-full flex-1">
+        <header className="relative flex justify-end items-center py-0 min-h-8">
+          <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
+          <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
+            {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
+          </button>
         </header>
 
         {isSettingMode ? (

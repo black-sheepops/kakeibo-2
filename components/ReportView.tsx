@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { Doughnut } from "react-chartjs-2";
@@ -31,7 +31,7 @@ export default function ReportView({
   targetMonth,
   targetDate,
   setTargetDate,
-  isMounted,
+  isMounted: propsIsMounted,
   dailyTotals,
   barData,
   categoryTotals,
@@ -42,8 +42,13 @@ export default function ReportView({
   startEdit,
   deleteRecord,
 }: ReportViewProps) {
+  const [mounted, setMounted] = useState(false);
   const [selectedDayRecords, setSelectedDayRecords] = useState<RecordItem[] | null>(null);
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handlePrevMonth = () => {
     setTargetDate(new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1));
@@ -55,32 +60,30 @@ export default function ReportView({
 
   const handleDayClick = (date: Date) => {
     const yyyy = date.getFullYear();
-    const mm = date.getMonth() + 1;
-    const dd = date.getDate();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const clickedDateStr = `${yyyy}-${mm}-${dd}`; // 例: "2026-06-01"
 
-    const matched = allRecords.filter((r) => {
+    const recordsArray = Array.isArray(allRecords) ? allRecords : [];
+
+    const matched = recordsArray.filter((r) => {
       if (!r.date) return false;
-      const recordDate = new Date(r.date);
-      return (
-        recordDate.getFullYear() === yyyy &&
-        recordDate.getMonth() + 1 === mm &&
-        recordDate.getDate() === dd
-      );
+      // データのdateから "YYYY-MM-DD" 部分だけを安全に抽出して比較
+      const recordDateStr = String(r.date).split("T")[0].split(" ")[0];
+      return recordDateStr === clickedDateStr;
     });
 
-    setSelectedDateStr(`${yyyy}年 ${mm}月 ${dd}日`);
+    setSelectedDateStr(`${yyyy}年 ${Number(mm)}月 ${Number(dd)}日`);
     setSelectedDayRecords(matched);
   };
 
   const totalExpense = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
   const totalPayment = Object.values(paymentTotals).reduce((a, b) => a + b, 0);
 
-  // 過去6ヶ月グラフ用の安全なデータ取得
   const barLabels = (barData?.labels as string[]) || [];
   const barValues = (barData?.datasets?.[0]?.data as number[]) || [0, 0, 0, 0, 0, 0];
   const maxBarVal = Math.max(...barValues, 1);
 
-  // 支払い別用の色パレット
   const paymentColors = [
     "#34d399", // emerald-400
     "#60a5fa", // blue-400
@@ -90,7 +93,6 @@ export default function ReportView({
     "#38bdf8", // sky-400
   ];
 
-  // 支払い別円グラフデータの構築
   const paymentLabelsArr = Object.keys(paymentTotals);
   const paymentValuesArr = Object.values(paymentTotals);
   const paymentDoughnutData = {
@@ -104,7 +106,6 @@ export default function ReportView({
     ],
   };
 
-  // メモ欄の「[自動]」や「自動」という文字列を取り除いて表示する関数（アイコンなし）
   const renderMemoWithoutAuto = (memo?: string) => {
     if (!memo) return null;
     const cleanedMemo = memo.replace(/\[自動\]|自動/g, "").trim();
@@ -116,6 +117,20 @@ export default function ReportView({
       </div>
     );
   };
+
+  // サーバーサイドおよびマウント前はプレースホルダーを返し、ハイドレーションエラーを完全に防ぐ
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-3xl shadow-lg p-6 space-y-6 w-full min-h-[400px] animate-pulse">
+        <div className="h-8 bg-gray-100 rounded-xl w-1/3 mx-auto"></div>
+        <div className="h-24 bg-gray-100 rounded-2xl"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-48 bg-gray-100 rounded-2xl"></div>
+          <div className="h-48 bg-gray-100 rounded-2xl"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-3xl shadow-lg p-6 space-y-6 w-full">
@@ -145,7 +160,7 @@ export default function ReportView({
         </div>
 
         {/* 2カラムレイアウト（カテゴリ別 / 支払い別 を左右に配置） */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           
           {/* カテゴリ別 円グラフ ＋ 下部リスト */}
           <div className="bg-gray-50 p-4 rounded-2xl border flex flex-col justify-start">
@@ -235,7 +250,7 @@ export default function ReportView({
       </div>
 
       <div className="space-y-6 pt-2">
-        {/* 過去6ヶ月の推移（カスタムバーグラフ） */}
+        {/* 過去6ヶ月の推移 */}
         <div>
           <div className="text-xs font-bold text-gray-700 mb-2">📈 過去6ヶ月推移</div>
           <div className="bg-gray-50 p-4 rounded-2xl border h-48 flex items-end justify-between gap-2">
@@ -267,31 +282,28 @@ export default function ReportView({
 
       <div className="pt-2">
         <div className="text-xs font-bold text-gray-700 mb-1">📅 カレンダー</div>
-        
-        {isMounted && (
-          <div className="border rounded-2xl p-2 bg-gray-50 flex justify-center">
-            <Calendar
-              value={targetDate}
-              onChange={(val) => {
-                if (val instanceof Date) setTargetDate(val);
-              }}
-              onClickDay={handleDayClick}
-              tileContent={({ date }) => {
-                const yyyy = date.getFullYear();
-                const mm = String(date.getMonth() + 1).padStart(2, "0");
-                const dd = String(date.getDate()).padStart(2, "0");
-                const dateStr = `${yyyy}-${mm}-${dd}`;
-                const sum = dailyTotals[dateStr];
-                return sum ? (
-                  <div className="text-[9px] font-bold text-emerald-600 truncate">
-                    ¥{sum.toLocaleString()}
-                  </div>
-                ) : null;
-              }}
-              className="react-calendar-custom text-xs w-full border-none bg-transparent"
-            />
-          </div>
-        )}
+        <div className="border rounded-2xl p-2 bg-gray-50 flex justify-center">
+          <Calendar
+            value={targetDate}
+            onChange={(val) => {
+              if (val instanceof Date) setTargetDate(val);
+            }}
+            onClickDay={handleDayClick}
+            tileContent={({ date }) => {
+              const yyyy = date.getFullYear();
+              const mm = String(date.getMonth() + 1).padStart(2, "0");
+              const dd = String(date.getDate()).padStart(2, "0");
+              const dateStr = `${yyyy}-${mm}-${dd}`;
+              const sum = dailyTotals[dateStr];
+              return sum ? (
+                <div className="text-[9px] font-bold text-emerald-600 truncate">
+                  ¥{sum.toLocaleString()}
+                </div>
+              ) : null;
+            }}
+            className="react-calendar-custom text-xs w-full border-none bg-transparent"
+          />
+        </div>
       </div>
 
       <div className="space-y-2 pt-2">

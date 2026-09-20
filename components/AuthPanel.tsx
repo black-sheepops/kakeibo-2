@@ -12,8 +12,9 @@ interface AuthPanelProps {
 }
 
 export default function AuthPanel({ email, onSignedIn, onSignedOut, resetMode = false, onPasswordReset }: AuthPanelProps) {
-  const [mode, setMode] = useState<"signIn" | "signUp" | "reset">(resetMode ? "reset" : "signIn");
+  const [mode, setMode] = useState<"signIn" | "signUp" | "resetRequest" | "reset">(resetMode ? "reset" : "signIn");
   const [formEmail, setFormEmail] = useState("");
+  const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,6 +23,13 @@ export default function AuthPanel({ email, onSignedIn, onSignedOut, resetMode = 
     event.preventDefault();
     setIsSubmitting(true);
     setMessage("");
+
+    if (mode === "resetRequest") {
+      const { error } = await supabase.auth.resetPasswordForEmail(formEmail.trim(), { redirectTo: window.location.origin });
+      setMessage(error ? `再設定メールの送信に失敗しました: ${error.message}` : "パスワード再設定メールを送信しました。メールをご確認ください。");
+      setIsSubmitting(false);
+      return;
+    }
 
     const result = mode === "reset"
       ? await supabase.auth.updateUser({ password })
@@ -72,26 +80,34 @@ export default function AuthPanel({ email, onSignedIn, onSignedOut, resetMode = 
       ) : (
         <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-3 flex gap-2">
-            {mode !== "reset" && <button type="button" onClick={() => setMode("signIn")} className={`flex-1 rounded-lg p-2 text-xs font-bold ${mode === "signIn" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-500"}`}>ログイン</button>}
-            {mode !== "reset" && <button type="button" onClick={() => setMode("signUp")} className={`flex-1 rounded-lg p-2 text-xs font-bold ${mode === "signUp" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-500"}`}>新規登録</button>}
+            {mode !== "reset" && mode !== "resetRequest" && <button type="button" onClick={() => setMode("signIn")} className={`flex-1 rounded-lg p-2 text-xs font-bold ${mode === "signIn" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-500"}`}>ログイン</button>}
+            {mode !== "reset" && mode !== "resetRequest" && <button type="button" onClick={() => setMode("signUp")} className={`flex-1 rounded-lg p-2 text-xs font-bold ${mode === "signUp" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-500"}`}>新規登録</button>}
           </div>
+          {mode === "resetRequest" && (
+            <div className="mb-3">
+              <h2 className="text-sm font-bold text-gray-700">パスワードを再設定</h2>
+              <p className="mt-1 text-[10px] text-gray-500">登録済みのメールアドレスを入力してください。</p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-2">
-            {mode !== "reset" && <input type="email" required value={formEmail} onChange={(event) => setFormEmail(event.target.value)} placeholder="メールアドレス" className="w-full rounded-lg border p-2 text-xs" />}
-            <input type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="パスワード（6文字以上）" className="w-full rounded-lg border p-2 text-xs" />
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-emerald-600 p-2 text-xs font-bold text-white disabled:opacity-50">
-              {isSubmitting ? "処理中..." : mode === "reset" ? "パスワードを変更" : mode === "signIn" ? "ログイン" : "アカウントを作成"}
+            {mode !== "reset" && <input type="email" required value={formEmail} onChange={(event) => { setFormEmail(event.target.value); setIsEmailConfirmed(false); }} placeholder="メールアドレス" className="w-full rounded-lg border p-2 text-xs" />}
+            {mode === "resetRequest" && (
+              <label className="flex items-start gap-2 text-[10px] text-gray-600">
+                <input type="checkbox" checked={isEmailConfirmed} onChange={(event) => setIsEmailConfirmed(event.target.checked)} className="mt-0.5" />
+                <span>入力したメールアドレスに間違いがないことを確認しました。</span>
+              </label>
+            )}
+            {mode !== "resetRequest" && <input type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="パスワード（6文字以上）" className="w-full rounded-lg border p-2 text-xs" />}
+            <button type="submit" disabled={isSubmitting || (mode === "resetRequest" && !isEmailConfirmed)} className="w-full rounded-lg bg-emerald-600 p-2 text-xs font-bold text-white disabled:opacity-50">
+              {isSubmitting ? "処理中..." : mode === "reset" ? "パスワードを変更" : mode === "resetRequest" ? "再設定メールを送信" : mode === "signIn" ? "ログイン" : "アカウントを作成"}
             </button>
           </form>
-          {mode === "signIn" && <button type="button" onClick={async () => {
-            if (!formEmail) {
-              setMessage("先にメールアドレスを入力してください。");
-              return;
-            }
-            setIsSubmitting(true);
-            const { error } = await supabase.auth.resetPasswordForEmail(formEmail, { redirectTo: window.location.origin });
-            setMessage(error ? `再設定メールの送信に失敗しました: ${error.message}` : "パスワード再設定メールを送信しました。メールをご確認ください。");
-            setIsSubmitting(false);
-          }} className="mt-2 w-full text-xs text-emerald-700 underline">パスワードを忘れた場合</button>}
+          {mode === "resetRequest" && (
+            <button type="button" onClick={() => { setMode("signIn"); setMessage(""); setIsEmailConfirmed(false); }} className="mt-2 w-full text-xs text-gray-500 underline">
+              ログイン画面に戻る
+            </button>
+          )}
+          {mode === "signIn" && <button type="button" onClick={() => { setMode("resetRequest"); setMessage(""); setIsEmailConfirmed(false); }} className="mt-2 w-full text-xs text-emerald-700 underline">パスワードを忘れた場合</button>}
           {message && <p className="mt-2 text-[10px] text-gray-600">{message}</p>}
         </div>
       )}

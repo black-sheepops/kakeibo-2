@@ -12,3 +12,13 @@ body {
   overscroll-behavior-y: none; /* スマホ特有のスクロール時の跳ね返りを防止 */
   -webkit-tap-highlight-color: transparent; /* ボタンをタップした時の青い枠を消す */
 }
+
+.react-calendar-custom .react-calendar__tile {
+  min-height: 3.75rem;
+  padding: 0.5rem 0.125rem;
+  font-size: 1rem;
+}
+
+.react-calendar-custom .react-calendar__tile abbr {
+  font-size: 1rem;
+}

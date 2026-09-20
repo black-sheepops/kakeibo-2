@@ -287,7 +287,7 @@ export default function ReportView({
 
       <div className="pt-2">
         <div className="text-xs font-bold text-gray-700 mb-1">📅 カレンダー</div>
-        <div className="border rounded-2xl p-2 bg-gray-50 flex justify-center">
+        <div className="p-0 bg-transparent flex justify-center">
           <Calendar
             value={targetDate}
             locale="ja-JP"
@@ -308,7 +308,7 @@ export default function ReportView({
               const dateStr = `${yyyy}-${mm}-${dd}`;
               const sum = dailyTotals[dateStr];
               return sum ? (
-                <div className="text-[9px] font-bold text-emerald-600 truncate">
+                <div className="text-[8px] font-bold text-emerald-600 whitespace-nowrap">
                   ¥{sum.toLocaleString()}
                 </div>
               ) : null;

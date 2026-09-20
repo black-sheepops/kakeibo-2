@@ -106,7 +106,7 @@ export default function ReportView({
     ],
   };
 
-  const renderMemoWithoutAuto = (memo?: string) => {
+  const renderMemoWithoutAuto = (memo?: string | null) => {
     if (!memo) return null;
     const cleanedMemo = memo.replace(/\[自動\]|自動/g, "").trim();
     if (!cleanedMemo) return null;

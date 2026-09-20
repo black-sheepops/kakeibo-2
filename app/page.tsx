@@ -8,6 +8,7 @@ import 'react-calendar/dist/Calendar.css';
 import QuickInputForm from "@/components/QuickInputForm";
 import SettingManager from "@/components/SettingManager";
 import ReportView from "@/components/ReportView";
+import { AutoButton, AutoSchedule, RecordItem } from "@/types/kakeibo";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -24,9 +25,9 @@ export default function Home() {
   const [isSettingMode, setIsSettingMode] = useState(false);
   
   // データ群
-  const [records, setRecords] = useState([]);
-  const [schedules, setSchedules] = useState([]);
-  const [autoButtons, setAutoButtons] = useState([]);
+  const [records, setRecords] = useState<RecordItem[]>([]);
+  const [schedules, setSchedules] = useState<AutoSchedule[]>([]);
+  const [autoButtons, setAutoButtons] = useState<AutoButton[]>([]);
 
   // 通常入力フォーム用
   const [amount, setAmount] = useState("");
@@ -34,7 +35,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("現金");
   const [date, setDate] = useState(getTodayString());
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // ワンタップボタン設定用
   const [btnLabel, setBtnLabel] = useState("");
@@ -42,7 +43,7 @@ export default function Home() {
   const [btnCategory, setBtnCategory] = useState("");
   const [btnMemo, setBtnMemo] = useState("");
   const [btnPayment, setBtnPayment] = useState("現金");
-  const [editingBtnId, setEditingBtnId] = useState(null);
+  const [editingBtnId, setEditingBtnId] = useState<number | null>(null);
 
   // 定期ルール（固定費）設定用
   const [schLabel, setSchLabel] = useState("");
@@ -50,9 +51,9 @@ export default function Home() {
   const [schCategory, setSchCategory] = useState("");
   const [schMemo, setSchMemo] = useState("");
   const [schPayment, setSchPayment] = useState("現金");
-  const [schInterval, setSchInterval] = useState("monthly");
+  const [schInterval, setSchInterval] = useState<"monthly" | "weekly">("monthly");
   const [schDay, setSchDay] = useState("1");
-  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
 
   const quickCategories = ["食費", "外食", "日用品", "バドミントン", "自動車", "交通費", "固定費", "その他"];
   const paymentMethods = ["現金", "クレジットカード", "QR決済", "その他"];
@@ -66,15 +67,15 @@ export default function Home() {
   };
 
   // 自動入力チェックロジック
-  const checkAndTriggerAutoInput = async (currentSchedules) => {
+  const checkAndTriggerAutoInput = async (currentSchedules: AutoSchedule[]) => {
     const today = new Date();
     const todayStr = getTodayString();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay();
 
-    const newInserts = [];
-    const updatedScheduleIds = [];
+    const newInserts: Omit<RecordItem, "id">[] = [];
+    const updatedScheduleIds: number[] = [];
 
     for (const sch of currentSchedules) {
       let targetDateStr = "";
@@ -106,7 +107,7 @@ export default function Home() {
             amount: sch.amount,
             category: sch.category,
             memo: autoMemoText,
-            payment_method: sch.payment_method,
+            payment_method: sch.payment_method || "現金",
             date: targetDateStr
           });
           updatedScheduleIds.push(sch.id);
@@ -167,7 +168,7 @@ export default function Home() {
   }, [targetYear, targetMonth, fetchData, isMounted]);
 
   // アクション系
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !selectedCategory || !date) {
       alert("金額、カテゴリ、日付を入力してください！");
@@ -191,7 +192,7 @@ export default function Home() {
     }
   };
 
-  const handleButtonSubmit = async (e) => {
+  const handleButtonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!btnLabel || !btnAmount || !btnCategory) {
       alert("ボタン名、金額、カテゴリは必須です");
@@ -213,7 +214,7 @@ export default function Home() {
     } catch (error) { alert("ボタンの保存に失敗しました"); }
   };
 
-  const handleScheduleSubmit = async (e) => {
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schLabel || !schAmount || !schCategory) {
       alert("名前、金額、カテゴリは必須です");
@@ -235,33 +236,33 @@ export default function Home() {
     } catch (error) { alert("スケジュールの保存に失敗しました"); }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("このデータを履歴から削除しますか？")) return;
     await supabase.from("kakeibo").delete().eq("id", id);
     await fetchData();
   };
 
-  const handleDeleteButton = async (id) => {
+  const handleDeleteButton = async (id: number) => {
     if (!confirm("このワンタップボタンを削除しますか？")) return;
     await supabase.from("auto_buttons").delete().eq("id", id);
     await fetchData();
   };
 
-  const handleDeleteSchedule = async (id) => {
+  const handleDeleteSchedule = async (id: number) => {
     if (!confirm("この自動入力スケジュールを削除しますか？")) return;
     await supabase.from("auto_schedules").delete().eq("id", id);
     await fetchData();
   };
 
-  const startEdit = (rec) => {
-    setEditingId(String(rec.id)); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo); setPaymentMethod(rec.payment_method || "現金"); setDate(rec.date || getTodayString());
+  const startEdit = (rec: RecordItem) => {
+    setEditingId(String(rec.id)); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo || ""); setPaymentMethod(rec.payment_method || "現金"); setDate(rec.date || getTodayString());
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleAutoSelect = (btn) => {
+  const handleAutoSelect = (btn: AutoButton) => {
     setAmount(btn.amount.toString());
     setSelectedCategory(btn.category);
-    setMemo(btn.memo);
+    setMemo(btn.memo || "");
     setPaymentMethod(btn.payment_method || "現金");
     setDate(getTodayString());
   };
@@ -273,18 +274,18 @@ export default function Home() {
     return parseInt(y, 10) === targetYear && parseInt(m, 10) === targetMonth;
   });
 
-  const dailyTotals = filteredRecords.reduce((acc, rec) => {
+  const dailyTotals = filteredRecords.reduce<Record<string, number>>((acc, rec) => {
     const dateStr = rec.date;
     acc[dateStr] = (acc[dateStr] || 0) + Number(rec.amount);
     return acc;
   }, {});
 
-  const categoryTotals = filteredRecords.reduce((acc, r) => {
+  const categoryTotals = filteredRecords.reduce<Record<string, number>>((acc, r) => {
     acc[r.category] = (acc[r.category] || 0) + r.amount;
     return acc;
   }, {});
 
-  const paymentTotals = filteredRecords.reduce((acc, r) => {
+  const paymentTotals = filteredRecords.reduce<Record<string, number>>((acc, r) => {
     const method = r.payment_method || "現金";
     acc[method] = (acc[method] || 0) + r.amount;
     return acc;
@@ -353,7 +354,7 @@ export default function Home() {
               setBtnLabel(btn.label);
               setBtnAmount(btn.amount.toString());
               setBtnCategory(btn.category);
-              setBtnMemo(btn.memo);
+              setBtnMemo(btn.memo || "");
               setBtnPayment(btn.payment_method || "現金");
             }}
             cancelEditButton={() => {

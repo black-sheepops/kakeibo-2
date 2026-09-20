@@ -25,4 +25,6 @@ export interface AutoSchedule {
   payment_method?: string;
   target_day: number;
   memo?: string;
+  interval_type: "monthly" | "weekly";
+  last_executed_at: string | null;
 }

@@ -45,6 +45,14 @@ type Props = {
   startEditSchedule: (s: AutoSchedule) => void;
   cancelEditSchedule: () => void;
   handleDeleteSchedule: (id: number) => void;
+  newCategory: string;
+  setNewCategory: (value: string) => void;
+  handleAddCategory: (event: React.FormEvent) => void;
+  handleDeleteCategory: (name: string) => void;
+  newPaymentMethod: string;
+  setNewPaymentMethod: (value: string) => void;
+  handleAddPaymentMethod: (event: React.FormEvent) => void;
+  handleDeletePaymentMethod: (name: string) => void;
 };
 
 export default function SettingManager({
@@ -54,10 +62,45 @@ export default function SettingManager({
   paymentMethods,
   weekDays,
   btnLabel, setBtnLabel, btnAmount, setBtnAmount, btnCategory, setBtnCategory, btnMemo, setBtnMemo, btnPayment, setBtnPayment, editingBtnId, handleButtonSubmit, startEditButton, cancelEditButton, handleDeleteButton,
-  schLabel, setSchLabel, schAmount, setSchAmount, schCategory, setSchCategory, schMemo, setSchMemo, schPayment, setSchPayment, schInterval, setSchInterval, schDay, setSchDay, editingScheduleId, handleScheduleSubmit, startEditSchedule, cancelEditSchedule, handleDeleteSchedule
+  schLabel, setSchLabel, schAmount, setSchAmount, schCategory, setSchCategory, schMemo, setSchMemo, schPayment, setSchPayment, schInterval, setSchInterval, schDay, setSchDay, editingScheduleId, handleScheduleSubmit, startEditSchedule, cancelEditSchedule, handleDeleteSchedule, newCategory, setNewCategory, handleAddCategory, handleDeleteCategory, newPaymentMethod, setNewPaymentMethod, handleAddPaymentMethod, handleDeletePaymentMethod
 }: Props) {
   return (
     <div className="flex flex-col gap-6 flex-1">
+      <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
+        <h2 className="text-sm font-bold text-gray-700 border-b pb-2">🏷️ カテゴリ・支払い方法</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs font-bold text-gray-600 mb-2">カテゴリ</p>
+            <div className="space-y-2">
+              {quickCategories.map((category) => (
+                <div key={category} className="flex items-center justify-between gap-2 h-9 text-xs bg-gray-50 rounded-xl px-3">
+                  <span className="min-w-0 truncate">{category}</span>
+                  <button type="button" onClick={() => handleDeleteCategory(category)} className="text-red-400 font-bold">削除</button>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleAddCategory} className="flex gap-2 mt-2">
+              <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="カテゴリ名" className="min-w-0 flex-1 p-2 text-xs border rounded-xl" />
+              <button type="submit" className="px-3 text-xs bg-emerald-600 text-white rounded-xl">追加</button>
+            </form>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-600 mb-2">支払い方法</p>
+            <div className="space-y-2">
+              {paymentMethods.map((method) => (
+                <div key={method} className="flex items-center justify-between gap-2 h-9 text-xs bg-gray-50 rounded-xl px-3">
+                  <span className="min-w-0 truncate">{method}</span>
+                  <button type="button" onClick={() => handleDeletePaymentMethod(method)} className="text-red-400 font-bold">削除</button>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleAddPaymentMethod} className="flex gap-2 mt-2">
+              <input value={newPaymentMethod} onChange={(e) => setNewPaymentMethod(e.target.value)} placeholder="支払い方法" className="min-w-0 flex-1 p-2 text-xs border rounded-xl" />
+              <button type="submit" className="px-3 text-xs bg-emerald-600 text-white rounded-xl">追加</button>
+            </form>
+          </div>
+        </div>
+      </div>
       {/* ワンタップボタン設定カード */}
       <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
         <h2 className="text-sm font-bold text-gray-700 border-b pb-2">🎯 ワンタップボタン設定</h2>
@@ -124,18 +167,17 @@ export default function SettingManager({
             </select>
           </div>
           <div className="flex gap-2">
-              <select 
-                value={schInterval} 
-                onChange={(e) => { 
-                  setSchInterval(e.target.value as "monthly" | "weekly"); 
-                  setSchDay("1"); 
-                }} 
+              <select
+                value={schInterval}
+                onChange={(e) => {
+                  setSchInterval(e.target.value as "monthly" | "weekly");
+                  setSchDay("1");
+                }}
                 className="p-2.5 text-xs border border-gray-200 rounded-xl bg-gray-50 flex-1"
               >
                 <option value="monthly">毎月固定</option>
                 <option value="weekly">毎週固定</option>
               </select>
-
               <select 
                 value={schDay} 
                 onChange={(e) => setSchDay(e.target.value)} 
@@ -153,7 +195,7 @@ export default function SettingManager({
                     <option value="4">木曜日</option>
                     <option value="5">金曜日</option>
                     <option value="6">土曜日</option>
-                    <option value="7">日曜日</option>
+                    <option value="0">日曜日</option>
                   </>
                 )}
               </select>

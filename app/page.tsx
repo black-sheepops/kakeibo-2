@@ -28,6 +28,10 @@ export default function Home() {
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [schedules, setSchedules] = useState<AutoSchedule[]>([]);
   const [autoButtons, setAutoButtons] = useState<AutoButton[]>([]);
+  const [quickCategories, setQuickCategories] = useState(["食費", "外食", "日用品", "バドミントン", "自動車", "交通費", "固定費", "その他"]);
+  const [paymentMethods, setPaymentMethods] = useState(["現金", "クレジットカード", "QR決済", "その他"]);
+  const [newCategory, setNewCategory] = useState("");
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
 
   // 通常入力フォーム用
   const [amount, setAmount] = useState("");
@@ -55,8 +59,6 @@ export default function Home() {
   const [schDay, setSchDay] = useState("1");
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
 
-  const quickCategories = ["食費", "外食", "日用品", "バドミントン", "自動車", "交通費", "固定費", "その他"];
-  const paymentMethods = ["現金", "クレジットカード", "QR決済", "その他"];
   const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
 
   // 月変更時に targetDate も同期する
@@ -73,24 +75,22 @@ export default function Home() {
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
     const newInserts: Omit<RecordItem, "id">[] = [];
     const updatedScheduleIds: number[] = [];
 
     for (const sch of currentSchedules) {
-      let targetDateStr = "";
       let shouldExecute = false;
+      let targetDateStr = "";
 
       if (sch.interval_type === "monthly") {
-        if (currentDay >= sch.target_day && sch.last_executed_at !== currentMonthStr) {
-          shouldExecute = true;
-          targetDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(sch.target_day).padStart(2, "0")}`;
-        }
+        const targetDay = Math.min(Math.max(sch.target_day, 1), lastDayOfMonth);
+        shouldExecute = currentDay >= targetDay && sch.last_executed_at !== currentMonthStr;
+        targetDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
       } else if (sch.interval_type === "weekly") {
-        if (currentDayOfWeek === sch.target_day && sch.last_executed_at !== todayStr) {
-          shouldExecute = true;
-          targetDateStr = todayStr;
-        }
+        shouldExecute = currentDayOfWeek === sch.target_day && sch.last_executed_at !== todayStr;
+        targetDateStr = todayStr;
       }
 
       if (shouldExecute && targetDateStr) {
@@ -154,6 +154,12 @@ export default function Home() {
 
     const { data: btnData } = await supabase.from("auto_buttons").select("*").order("sort_order", { ascending: true });
     if (btnData) setAutoButtons(btnData);
+
+    const { data: categoryData } = await supabase.from("categories").select("name").order("sort_order", { ascending: true });
+    if (categoryData?.length) setQuickCategories(categoryData.map((item) => item.name));
+
+    const { data: paymentData } = await supabase.from("payment_methods").select("name").order("sort_order", { ascending: true });
+    if (paymentData?.length) setPaymentMethods(paymentData.map((item) => item.name));
   }, [targetYear, targetMonth]);
 
   useEffect(() => {
@@ -254,6 +260,52 @@ export default function Home() {
     await fetchData();
   };
 
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newCategory.trim();
+    if (!name || quickCategories.includes(name)) return;
+    const { error } = await supabase.from("categories").insert({ name, sort_order: quickCategories.length });
+    if (error) {
+      alert("カテゴリの追加に失敗しました");
+      return;
+    }
+    setQuickCategories((current) => [...current, name]);
+    setNewCategory("");
+  };
+
+  const handleDeleteCategory = async (name: string) => {
+    if (!confirm(`カテゴリ「${name}」を削除しますか？`)) return;
+    const { error } = await supabase.from("categories").delete().eq("name", name);
+    if (error) {
+      alert("カテゴリの削除に失敗しました");
+      return;
+    }
+    setQuickCategories((current) => current.filter((item) => item !== name));
+  };
+
+  const handleAddPaymentMethod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newPaymentMethod.trim();
+    if (!name || paymentMethods.includes(name)) return;
+    const { error } = await supabase.from("payment_methods").insert({ name, sort_order: paymentMethods.length });
+    if (error) {
+      alert("支払い方法の追加に失敗しました");
+      return;
+    }
+    setPaymentMethods((current) => [...current, name]);
+    setNewPaymentMethod("");
+  };
+
+  const handleDeletePaymentMethod = async (name: string) => {
+    if (!confirm(`支払い方法「${name}」を削除しますか？`)) return;
+    const { error } = await supabase.from("payment_methods").delete().eq("name", name);
+    if (error) {
+      alert("支払い方法の削除に失敗しました");
+      return;
+    }
+    setPaymentMethods((current) => current.filter((item) => item !== name));
+  };
+
   const startEdit = (rec: RecordItem) => {
     setEditingId(String(rec.id)); setAmount(rec.amount.toString()); setSelectedCategory(rec.category); setMemo(rec.memo || ""); setPaymentMethod(rec.payment_method || "現金"); setDate(rec.date || getTodayString());
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -262,7 +314,7 @@ export default function Home() {
   const handleAutoSelect = (btn: AutoButton) => {
     setAmount(btn.amount.toString());
     setSelectedCategory(btn.category);
-    setMemo(btn.memo || "");
+    setMemo(`[ワンタップ] ${btn.memo || ""}`.trim());
     setPaymentMethod(btn.payment_method || "現金");
     setDate(getTodayString());
   };
@@ -323,13 +375,19 @@ export default function Home() {
     }],
   };
 
-  if (!isMounted) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p>読込中...</p></div>;
+  if (!isMounted) {
+    return (
+      <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
+        <p>読込中...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 overflow-x-hidden">
       <div className="w-full max-w-md flex flex-col gap-6 h-full flex-1">
-        <header className="flex justify-between items-center py-2">
-          <h1 className="text-xl font-black text-emerald-700">🍀コツコツ家計簿🍀</h1>
+        <header className="relative flex justify-end items-center py-2 min-h-10">
+          <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-emerald-700 whitespace-nowrap">🍀コツコツ家計簿🍀</h1>
           <button onClick={() => setIsSettingMode(!isSettingMode)} className="text-xs font-bold px-4 py-2 rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition active:scale-95">
             {isSettingMode ? "⬅ 戻る" : "⚙ 設定"}
           </button>
@@ -386,6 +444,14 @@ export default function Home() {
               setSchLabel(""); setSchAmount(""); setSchCategory(""); setSchMemo(""); setSchPayment("現金");
             }}
             handleDeleteSchedule={handleDeleteSchedule}
+            newCategory={newCategory}
+            setNewCategory={setNewCategory}
+            handleAddCategory={handleAddCategory}
+            handleDeleteCategory={handleDeleteCategory}
+            newPaymentMethod={newPaymentMethod}
+            setNewPaymentMethod={setNewPaymentMethod}
+            handleAddPaymentMethod={handleAddPaymentMethod}
+            handleDeletePaymentMethod={handleDeletePaymentMethod}
           />
         ) : (
           <div className="flex flex-col gap-6 flex-1 w-full">

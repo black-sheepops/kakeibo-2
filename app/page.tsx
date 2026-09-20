@@ -305,11 +305,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
+    if (isMounted && session) {
       const dateObj = new Date(targetYear, targetMonth - 1);
       fetchData(dateObj);
     }
-  }, [targetYear, targetMonth, fetchData, isMounted]);
+  }, [targetYear, targetMonth, fetchData, isMounted, session]);
 
   // アクション系
   const handleSubmit = async (e: React.FormEvent) => {

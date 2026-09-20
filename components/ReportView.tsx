@@ -180,11 +180,11 @@ export default function ReportView({
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:gap-4 items-start">
-          <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border">
+          <div className="min-w-0 space-y-4 bg-gray-50 p-4 rounded-2xl border overflow-hidden">
             <div>
               <div className="text-xs font-bold text-gray-700 mb-3">🏷️ カテゴリ別グラフ</div>
               {Object.keys(categoryTotals).length > 0 && doughnutData ? (
-                <div className="w-[160px] h-[160px] mx-auto">
+                <div className="w-full max-w-[160px] aspect-square mx-auto">
                   <Doughnut
                     data={doughnutData}
                     options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
@@ -216,11 +216,11 @@ export default function ReportView({
             </div>
           </div>
 
-          <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border">
+          <div className="min-w-0 space-y-4 bg-gray-50 p-4 rounded-2xl border overflow-hidden">
             <div>
               <div className="text-xs font-bold text-gray-700 mb-3">💳 支払い別グラフ</div>
               {Object.keys(paymentTotals).length > 0 ? (
-                <div className="w-[160px] h-[160px] mx-auto">
+                <div className="w-full max-w-[160px] aspect-square mx-auto">
                   <Doughnut
                     data={paymentDoughnutData}
                     options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}

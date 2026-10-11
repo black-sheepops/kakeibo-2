@@ -78,14 +78,39 @@ const getJapaneseDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const getNearestJapaneseBusinessDay = (date: Date, direction: "forward" | "backward") => {
-  const holidays = getJapaneseHolidays(date.getFullYear());
   const result = new Date(date);
   const isBusinessDay = () => {
     const key = getJapaneseDateKey(result);
-    return result.getDay() !== 0 && result.getDay() !== 6 && !holidays.has(key);
+    return result.getDay() !== 0 && result.getDay() !== 6 && !getJapaneseHolidays(result.getFullYear()).has(key);
   };
   while (!isBusinessDay()) result.setDate(result.getDate() + (direction === "forward" ? 1 : -1));
   return result;
+};
+
+const getMonthlyRegistrationDate = (year: number, monthIndex: number, targetDay: number) => {
+  const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const isMonthEndSchedule = targetDay === 31;
+  const scheduledDate = isMonthEndSchedule
+    ? new Date(year, monthIndex + 1, 0)
+    : new Date(year, monthIndex, Math.min(Math.max(targetDay, 1), lastDayOfMonth));
+  return getNearestJapaneseBusinessDay(scheduledDate, isMonthEndSchedule ? "backward" : "forward");
+};
+
+const getDueWeeklyRegistrationDate = (today: Date, targetDay: number, lastExecutedAt: string | null) => {
+  const todayKey = getJapaneseDateKey(today);
+  const currentWeekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+  for (let daysAgo = 0; daysAgo <= 14; daysAgo += 1) {
+    const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysAgo);
+    if (scheduledDate.getDay() !== targetDay) continue;
+    if (!lastExecutedAt && scheduledDate < currentWeekStart) continue;
+
+    const registrationDate = getNearestJapaneseBusinessDay(scheduledDate, "forward");
+    const registrationDateKey = getJapaneseDateKey(registrationDate);
+    if (registrationDateKey <= todayKey && (!lastExecutedAt || registrationDateKey > lastExecutedAt)) {
+      return registrationDateKey;
+    }
+  }
+  return null;
 };
 
 export default function Home() {
@@ -156,108 +181,93 @@ export default function Home() {
     if (!session) return;
     if (autoInputRunning.current) return;
     autoInputRunning.current = true;
-    const today = new Date();
-    const todayStr = getTodayString();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    const currentDayOfWeek = today.getDay();
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
-    const autoInputLockKey = `kakeibo-auto-input-${currentMonthStr}`;
-    if (localStorage.getItem(autoInputLockKey)) {
-      autoInputRunning.current = false;
-      return;
-    }
-    localStorage.setItem(autoInputLockKey, String(Date.now()));
-    const { data: monthRecords, error: monthRecordsError } = await supabase
-      .from("kakeibo")
-      .select("amount, category, payment_method, memo")
-      .eq("user_id", session.user.id)
-      .gte("date", monthStart)
-      .lte("date", monthEnd);
-    if (monthRecordsError) {
-      alert(`固定費の重複確認に失敗しました: ${monthRecordsError.message}`);
-      localStorage.removeItem(autoInputLockKey);
-      autoInputRunning.current = false;
-      return;
-    }
-
-    const newInserts: Omit<RecordItem, "id">[] = [];
-    const updatedScheduleIds: number[] = [];
-    const existingContents = new Set(
-      (monthRecords || []).map((record) =>
-        JSON.stringify([record.amount, record.category, record.payment_method, record.memo || ""])
-      )
-    );
-
-    for (const sch of currentSchedules) {
-      let shouldExecute = false;
-      let targetDateStr = "";
-
-      if (sch.interval_type === "monthly") {
-        const isMonthEndSchedule = sch.target_day === 31;
-        const scheduledDate = isMonthEndSchedule
-          ? new Date(today.getFullYear(), today.getMonth() + 1, 0)
-          : new Date(
-              today.getFullYear(),
-              today.getMonth(),
-              Math.min(Math.max(sch.target_day, 1), lastDayOfMonth)
-            );
-        const registrationDate = getNearestJapaneseBusinessDay(
-          scheduledDate,
-          isMonthEndSchedule ? "backward" : "forward"
-        );
-
-        const registrationDateStr = `${registrationDate.getFullYear()}-${String(registrationDate.getMonth() + 1).padStart(2, "0")}-${String(registrationDate.getDate()).padStart(2, "0")}`;
-        shouldExecute = getJapaneseDateKey(today) >= registrationDateStr && !sch.last_executed_at?.startsWith(currentMonthStr);
-        targetDateStr = registrationDateStr;
-      } else if (sch.interval_type === "weekly") {
-        shouldExecute = currentDayOfWeek === sch.target_day && sch.last_executed_at !== todayStr;
-        targetDateStr = todayStr;
-      }
-
-      if (shouldExecute && targetDateStr) {
-        const autoMemoText = `[自動] ${sch.memo || sch.label}`;
-        const contentKey = JSON.stringify([sch.amount, sch.category, sch.payment_method || "現金", autoMemoText]);
-        if (!existingContents.has(contentKey)) {
-          newInserts.push({
-            amount: sch.amount,
-            category: sch.category,
-            memo: autoMemoText,
-            payment_method: sch.payment_method || "現金",
-            date: targetDateStr
-          });
-          existingContents.add(contentKey);
-          updatedScheduleIds.push(sch.id);
-        } else {
-          updatedScheduleIds.push(sch.id);
-        }
-      }
-    }
-
-    if (newInserts.length > 0) {
-      const { error: insertError } = await supabase.from("kakeibo").insert(newInserts);
-      if (insertError) {
-        alert(`固定費の登録に失敗しました: ${insertError.message}`);
-        localStorage.removeItem(autoInputLockKey);
-        autoInputRunning.current = false;
+    try {
+      const today = new Date();
+      const todayKey = getJapaneseDateKey(today);
+      const previousMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const recordsStart = getJapaneseDateKey(previousMonthStart);
+      const { data: existingRecords, error: recordsError } = await supabase
+        .from("kakeibo")
+        .select("date, amount, category, payment_method, memo")
+        .eq("user_id", session.user.id)
+        .gte("date", recordsStart)
+        .lte("date", todayKey);
+      if (recordsError) {
+        alert(`固定費の重複確認に失敗しました: ${recordsError.message}`);
         return;
       }
-      await Promise.all(updatedScheduleIds.map(id => {
-        const sch = currentSchedules.find(s => s.id === id);
-        return supabase.from("auto_schedules").update({
-          last_executed_at: todayStr
-        }).eq("id", id);
-      }));
-    } else if (updatedScheduleIds.length > 0) {
-      await Promise.all(updatedScheduleIds.map(id => {
-        const sch = currentSchedules.find(s => s.id === id);
-        return supabase.from("auto_schedules").update({
-          last_executed_at: todayStr
-        }).eq("id", id);
-      }));
+
+      const newInserts: Omit<RecordItem, "id">[] = [];
+      const executedSchedules: { id: number; date: string }[] = [];
+      const existingContents = new Set(
+        (existingRecords || []).map((record) =>
+          JSON.stringify([record.date, record.amount, record.category, record.payment_method, record.memo || ""])
+        )
+      );
+
+      for (const schedule of currentSchedules) {
+        let registrationDate: string | null = null;
+        const lastExecutedDate = schedule.last_executed_at?.slice(0, 10) || null;
+
+        if (schedule.interval_type === "monthly") {
+          const candidateDates = [-1, 0]
+            .map((monthOffset) => {
+              const month = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+              return getJapaneseDateKey(getMonthlyRegistrationDate(month.getFullYear(), month.getMonth(), schedule.target_day));
+            })
+            .filter((date, index) => {
+              const isPreviousMonth = index === 0;
+              return date <= todayKey
+                && (!isPreviousMonth || Boolean(lastExecutedDate))
+                && (!lastExecutedDate || date > lastExecutedDate);
+            })
+            .sort()
+            .reverse();
+          registrationDate = candidateDates[0] || null;
+        } else if (schedule.interval_type === "weekly") {
+          registrationDate = getDueWeeklyRegistrationDate(today, schedule.target_day, lastExecutedDate);
+        }
+
+        if (!registrationDate) continue;
+        const autoMemoText = `[自動] ${schedule.memo || schedule.label}`;
+        const contentKey = JSON.stringify([
+          registrationDate,
+          schedule.amount,
+          schedule.category,
+          schedule.payment_method || "現金",
+          autoMemoText
+        ]);
+        if (!existingContents.has(contentKey)) {
+          newInserts.push({
+            amount: schedule.amount,
+            category: schedule.category,
+            memo: autoMemoText,
+            payment_method: schedule.payment_method || "現金",
+            date: registrationDate
+          });
+          existingContents.add(contentKey);
+        }
+        executedSchedules.push({ id: schedule.id, date: registrationDate });
+      }
+
+      if (newInserts.length > 0) {
+        const { error: insertError } = await supabase.from("kakeibo").insert(newInserts);
+        if (insertError) {
+          alert(`固定費の登録に失敗しました: ${insertError.message}`);
+          return;
+        }
+      }
+
+      const scheduleUpdates = await Promise.all(executedSchedules.map(({ id, date }) =>
+        supabase.from("auto_schedules").update({ last_executed_at: date }).eq("id", id)
+      ));
+      const scheduleUpdateError = scheduleUpdates.find(({ error }) => error)?.error;
+      if (scheduleUpdateError) {
+        alert(`定期ルールの実行記録に失敗しました: ${scheduleUpdateError.message}`);
+      }
+    } finally {
+      autoInputRunning.current = false;
     }
-    autoInputRunning.current = false;
   };
 
   // データ取得ロジック
@@ -281,8 +291,10 @@ export default function Home() {
 
     if (recData) setRecords(recData);
 
-    const { data: schData } = await supabase.from("auto_schedules").select("*").eq("user_id", session.user.id).order("id", { ascending: true });
-    if (schData) {
+    const { data: schData, error: scheduleError } = await supabase.from("auto_schedules").select("*").eq("user_id", session.user.id).order("id", { ascending: true });
+    if (scheduleError) {
+      alert(`定期ルールの取得に失敗しました: ${scheduleError.message}`);
+    } else if (schData) {
       setSchedules(schData);
       await checkAndTriggerAutoInput(schData);
     }
@@ -416,13 +428,21 @@ export default function Home() {
     }
     try {
       if (editingScheduleId !== null) {
-        await supabase.from("auto_schedules").update({
+        const { error } = await supabase.from("auto_schedules").update({
           label: schLabel, amount: parseInt(schAmount, 10), category: schCategory, memo: schMemo, payment_method: schPayment, interval_type: schInterval, target_day: parseInt(schDay, 10)
         }).eq("id", editingScheduleId);
+        if (error) {
+          alert(`定期ルールの更新に失敗しました: ${error.message}`);
+          return;
+        }
       } else {
-        await supabase.from("auto_schedules").insert([{
+        const { error } = await supabase.from("auto_schedules").insert([{
           label: schLabel, amount: parseInt(schAmount, 10), category: schCategory, memo: schMemo, payment_method: schPayment, interval_type: schInterval, target_day: parseInt(schDay, 10), last_executed_at: null
         }]);
+        if (error) {
+          alert(`定期ルールの登録に失敗しました: ${error.message}`);
+          return;
+        }
       }
       setSchLabel(""); setSchAmount(""); setSchCategory(""); setSchMemo(""); setSchPayment("現金");
       setEditingScheduleId(null);
